@@ -1,0 +1,13 @@
+{
+  "name": "smart-medi-rules-tests",
+  "version": "1.0.0",
+  "description": "Firestore Security Rules Unit Tests for Smart Medi",
+  "main": "firestore-rules.test.js",
+  "scripts": {
+    "test": "mocha firestore-rules.test.js --timeout 15000"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "mocha": "^11.1.0"
+  }
+}

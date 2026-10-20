@@ -1,0 +1,315 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // ABSOLUTE SUPER ADMIN OVERRIDE (HIGHEST PRECEDENCE)
+    // =========================================================================
+    function isSuperAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.auth.token.email == 'mdsajolhasan5@gmail.com';
+    }
+
+    // Global bypass rule for Super Administrator: grants unrestricted read/write everywhere
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // =========================================================================
+    // HELPER FUNCTIONS
+    // =========================================================================
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function emailVerified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Exact baust.edu.bd or any subdomain; rejects evilbaust.edu.bd and baust.edu.bd.evil.com
+    function isUniEmail() {
+      return signedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email.lower().matches('.*@([a-z0-9-]+\\.)*baust\\.edu\\.bd');
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    // Institutional member: email verified, user doc exists, and verificationStatus == 'verified'
+    function isMember() {
+      return emailVerified()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).verificationStatus == 'verified';
+    }
+
+    function isDoctor() {
+      return emailVerified()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).role == 'doctor'
+        && userDoc(request.auth.uid).get('approved', false) == true;
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || (emailVerified()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (userDoc(request.auth.uid).role == 'admin' || userDoc(request.auth.uid).role == 'superadmin')
+        && userDoc(request.auth.uid).get('approved', false) == true);
+    }
+
+    function isPharmacist() {
+      return emailVerified()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).role == 'pharmacist'
+        && userDoc(request.auth.uid).get('approved', false) == true;
+    }
+
+    function isMedicalStaff() {
+      return isSuperAdmin() || (emailVerified()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (userDoc(request.auth.uid).role == 'doctor'
+            || userDoc(request.auth.uid).role == 'pharmacist'
+            || userDoc(request.auth.uid).role == 'medical_assistant'
+            || userDoc(request.auth.uid).role == 'nurse'
+            || userDoc(request.auth.uid).role == 'admin'
+            || userDoc(request.auth.uid).role == 'superadmin')
+        && userDoc(request.auth.uid).get('approved', false) == true);
+    }
+
+    function bgNotVerified() {
+      return request.resource.data.get('bloodGroupVerified', false) == false;
+    }
+
+    // =========================================================================
+    // 1. users/{uid}
+    // =========================================================================
+    match /users/{uid} {
+      allow read, write: if isSuperAdmin();
+      allow read: if isOwner(uid);
+
+      // Signup happens BEFORE email verification, so isMember() is NOT required for initial creation
+      allow create: if isOwner(uid)
+        && request.resource.data.role == 'student'
+        && request.resource.data.get('bloodGroupVerified', false) == false
+        && request.resource.data.get('approved', false) == false
+        && request.resource.data.emailType == (isUniEmail() ? 'university' : 'personal')
+        && request.resource.data.verificationStatus == (isUniEmail() ? 'verified' : 'pending')
+        && request.resource.data.get('uid', uid) == uid
+        && request.resource.data.get('email', request.auth.token.email) == request.auth.token.email;
+
+      allow update: if isOwner(uid)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['role','verificationStatus','bloodGroupVerified','emailType','approved','uid','email']);
+
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 2. medical_histories/{uid}
+    // =========================================================================
+    match /medical_histories/{uid} {
+      allow read: if (isOwner(uid) && isMember()) || isDoctor();
+
+      // Split create & update prevents doctor-verified merge trap lockout
+      allow create: if isOwner(uid) && isMember() && bgNotVerified();
+      allow update: if isOwner(uid) && isMember()
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['bloodGroupVerified']);
+
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 3. students/{uid}
+    // =========================================================================
+    match /students/{uid} {
+      allow read, write: if isSuperAdmin();
+      allow read: if (isOwner(uid) && isMember()) || isDoctor();
+
+      allow create: if isOwner(uid) && isMember() && bgNotVerified();
+      allow update: if isOwner(uid) && isMember()
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['bloodGroupVerified']);
+
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 4. student_ids/{id}
+    // =========================================================================
+    match /student_ids/{id} {
+      // not-yet-existing doc must be readable inside the claim transaction by verified members
+      allow read: if isMember() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if isMember()
+        && request.resource.data.keys().hasOnly(['uid','createdAt'])
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // =========================================================================
+    // 5. blood_donors/{uid} (H2: Minimal fields only)
+    // =========================================================================
+    match /blood_donors/{uid} {
+      allow read: if isMember();
+      allow create, update: if isOwner(uid) && isMember()
+        && request.resource.data.keys().hasOnly([
+             'uid', 'name', 'displayName', 'bloodGroup', 'bloodGroupVerified',
+             'department', 'hall', 'isAvailable', 'available', 'updatedAt', 'phone'
+           ])
+        && request.resource.data.get('bloodGroupVerified', false) == false
+        && request.resource.data.get('uid', uid) == uid
+        && (!('bloodGroup' in request.resource.data) || request.resource.data.bloodGroup is string)
+        && (!('displayName' in request.resource.data) || request.resource.data.displayName is string)
+        && (!('name' in request.resource.data) || request.resource.data.name is string)
+        && (!('department' in request.resource.data) || request.resource.data.department is string)
+        && (!('hall' in request.resource.data) || request.resource.data.hall is string)
+        && (!('isAvailable' in request.resource.data) || request.resource.data.isAvailable is bool)
+        && (!('available' in request.resource.data) || request.resource.data.available is bool)
+        && (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp)
+        && (!('phone' in request.resource.data) || request.resource.data.phone is string);
+      allow delete: if isOwner(uid) && isMember();
+    }
+
+    // =========================================================================
+    // 6. emergency_alerts/{alertId} (SOS alerts)
+    // =========================================================================
+    match /emergency_alerts/{alertId} {
+      allow read, write: if isSuperAdmin();
+      allow create: if isMember()
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+             'alertId', 'studentId', 'studentName', 'studentEmail', 'studentRoll',
+             'department', 'advisorId', 'hall', 'roomNumber', 'symptomCategory',
+             'optionalNote', 'criticalFlags', 'status', 'triggeredAt',
+             'acknowledgedAt', 'acknowledgedByDoctorId', 'emergencyContact'
+           ])
+        && request.resource.data.studentId is string
+        && request.resource.data.status is string
+        && request.resource.data.triggeredAt is timestamp
+        && (!('emergencyContact' in request.resource.data)
+            || request.resource.data.emergencyContact == null
+            || (request.resource.data.emergencyContact is map
+                && request.resource.data.emergencyContact.keys().hasOnly(['name', 'phone', 'relationship'])));
+
+      allow read: if (isMember() && resource.data.studentId == request.auth.uid) || isDoctor() || isAdmin();
+
+      allow update: if isDoctor() || isAdmin();
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 7. emergency_contacts/{uid} (Personal data: owner only)
+    // =========================================================================
+    match /emergency_contacts/{uid} {
+      allow read: if isOwner(uid) && isMember();
+      allow create, update: if isOwner(uid) && isMember()
+        && request.resource.data.keys().hasOnly([
+             'primaryContact', 'secondaryContact', 'name', 'relationship',
+             'phone', 'updatedAt'
+           ]);
+      allow delete: if isOwner(uid) && isMember();
+
+      match /{subcollection}/{allChildren=**} {
+        allow read, write: if isOwner(uid) && isMember();
+      }
+    }
+
+    // =========================================================================
+    // 8. inventory/{itemId}
+    // =========================================================================
+    match /inventory/{itemId} {
+      allow read: if isMember();
+      allow write: if isDoctor() || isAdmin() || isPharmacist();
+    }
+
+    // =========================================================================
+    // 9. sick_leaves/{leaveId}
+    // =========================================================================
+    match /sick_leaves/{leaveId} {
+      allow read: if (isMember() && resource.data.studentId == request.auth.uid) || isDoctor() || isAdmin();
+      allow write: if isDoctor();
+    }
+
+    // =========================================================================
+    // 10. faculty/{facultyId}
+    // =========================================================================
+    match /faculty/{facultyId} {
+      allow read: if isDoctor() || isAdmin();
+      allow write: if false; // Server-side Admin SDK / console only
+    }
+
+    // =========================================================================
+    // 11. patient_checkins/{checkInId} (Medical Center Staff Patient Check-In Logs)
+    // =========================================================================
+    match /patient_checkins/{checkInId} {
+      allow read, write: if isMedicalStaff();
+    }
+
+    // =========================================================================
+    // 12. access_logs/{logId} (Clinical Audit Trail)
+    // =========================================================================
+    match /access_logs/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isDoctor()
+        && request.resource.data.doctorUid == request.auth.uid
+        && (request.resource.data.action in ['view_history', 'create_prescription'])
+        && request.resource.data.keys().hasOnly([
+             'doctorUid', 'doctorName', 'studentUid', 'studentId', 'action', 'createdAt'
+           ])
+        && request.resource.data.doctorUid is string
+        && request.resource.data.doctorName is string
+        && request.resource.data.studentUid is string
+        && request.resource.data.studentId is string
+        && request.resource.data.action is string
+        && request.resource.data.createdAt is timestamp;
+      allow update, delete: if false;
+    }
+
+    // =========================================================================
+    // 13. prescriptions/{prescriptionId} (Digital Prescriptions)
+    // =========================================================================
+    match /prescriptions/{prescriptionId} {
+      allow read: if isDoctor() || (isMember() && resource.data.studentUid == request.auth.uid);
+      allow create: if isDoctor()
+        && request.resource.data.doctorUid == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+             'studentUid', 'studentId', 'studentName', 'doctorUid', 'doctorName',
+             'doctorDesignation', 'diagnosis', 'items', 'advice', 'followUpDate',
+             'source', 'createdAt'
+           ])
+        && request.resource.data.keys().hasAll([
+             'studentUid', 'studentId', 'studentName', 'doctorUid', 'doctorName',
+             'doctorDesignation', 'diagnosis', 'items', 'source', 'createdAt'
+           ])
+        && request.resource.data.items is list
+        && request.resource.data.items.size() >= 1
+        && request.resource.data.items.size() <= 20
+        && request.resource.data.diagnosis is string
+        && request.resource.data.diagnosis.size() > 0
+        && request.resource.data.studentUid is string
+        && request.resource.data.studentId is string
+        && request.resource.data.studentName is string
+        && request.resource.data.doctorUid is string
+        && request.resource.data.doctorName is string
+        && request.resource.data.doctorDesignation is string
+        && (request.resource.data.source in ['digital', 'scan'])
+        && request.resource.data.createdAt is timestamp
+        && (!('advice' in request.resource.data) || request.resource.data.advice is string)
+        && (!('followUpDate' in request.resource.data) || request.resource.data.followUpDate is timestamp);
+      allow update, delete: if false;
+    }
+
+    // =========================================================================
+    // DEFAULT DENY
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

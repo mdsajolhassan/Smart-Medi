@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Medical files are processed in-memory via Gemini API and are not stored in Firebase Storage.
+    // Default-deny everything to prevent unauthorized binary storage.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "506130896245",
+    "project_id": "smart-medi-b25ef",
+    "storage_bucket": "smart-medi-b25ef.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:506130896245:android:f4f177ccf86e5f4dfe6f3c",
+        "android_client_info": {
+          "package_name": "bd.edu.baust.smart_medi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_V8K5uRV88dVtzVc-7u-51o2wdXs6q0Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
