@@ -1,29 +1,25 @@
-# Smart Medi - System Design Diagrams
-
-### 1. Use Case Diagram
-```mermaid
 graph TD
-    student((Student)) --> (Login to Portal)
-    student --> (Trigger Emergency SOS)
-    student --> (Upload Medical History)
+    student["Student"] --> login1["Login to Portal"]
+    student --> sos["Trigger Emergency SOS"]
+    student --> medHistory["Upload Medical History"]
     
-    doctor((Doctor)) --> (Login to Portal)
-    doctor --> (Lookup Patient History)
-    doctor --> (Issue Digital Prescription)
-    doctor --> (Scan Paper Prescription)
+    doctor["Doctor"] --> login2["Login to Portal"]
+    doctor --> lookup["Lookup Patient History"]
+    doctor --> rx["Issue Digital Prescription"]
+    doctor --> scan["Scan Paper Prescription"]
 
-    pharmacist((Pharmacist)) --> (Login to Portal)
-    pharmacist --> (Dispense Medicine)
-    pharmacist --> (Manage Inventory Stock)
+    pharmacist["Pharmacist"] --> login3["Login to Portal"]
+    pharmacist --> dispense["Dispense Medicine"]
+    pharmacist --> inventory["Manage Inventory Stock"]
 
-    admin((Super Admin)) --> (Approve Pending Users)
-    admin --> (Monitor System Logs)
+    admin["Super Admin"] --> approve["Approve Pending Users"]
+    admin --> logs["Monitor System Logs"]
 
-    ai((Gemini AI))
-    (Scan Paper Prescription) --> ai
-    ai --> (Scan Paper Prescription)
+    ai["Gemini AI"]
+    scan --> ai
+    ai --> scan
 
-    stateDiagram-v2
+stateDiagram-v2
     [*] --> Upload_Prescription_Image
     Upload_Prescription_Image --> Call_Gemini_API
     
@@ -37,7 +33,7 @@ graph TD
     Doctor_Reviews_Data --> Submit_to_Firestore
     Submit_to_Firestore --> [*]
 
-    sequenceDiagram
+sequenceDiagram
     participant Doc as Doctor
     participant App as Smart Medi App
     participant AI as Gemini API
@@ -60,7 +56,7 @@ graph TD
     DB-->>App: Success Confirmation
     App-->>Doc: Show Success Snackbar
 
-    classDiagram
+classDiagram
     class UserProfile {
         +String uid
         +String name
@@ -96,5 +92,3 @@ graph TD
     DoctorProfile --> Prescription : Creates
     Pharmacist --> InventoryItem : Manages
     StudentProfile "1" -- "*" Prescription : Receives
-
-    
