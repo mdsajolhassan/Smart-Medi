@@ -46,3 +46,11 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Environment variables / secrets (never commit real keys)
+.env
+.env.*
+!.env.example
+
+# Node dependencies (used by rules_tests)
+**/node_modules/
