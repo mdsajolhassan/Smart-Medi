@@ -126,11 +126,13 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
     });
 
     _listenToEmergencyAlerts();
+    _listenToFaculty();
   }
 
   @override
   void dispose() {
     _sosSubscription?.cancel();
+    _facultySubscription?.cancel();
     _accountSearchController.dispose();
     super.dispose();
   }
@@ -251,6 +253,78 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
     );
   }
 
+  bool _isProvisioningFaculty = false;
+  StreamSubscription? _facultySubscription;
+
+  void _listenToFaculty() {
+    try {
+      _facultySubscription = FirebaseFirestore.instance
+          .collection(FirestoreCollections.faculty)
+          .snapshots()
+          .listen((snapshot) {
+        if (!mounted) return;
+
+        final List<Map<String, String?>> liveFaculty = [];
+        final List<Map<String, dynamic>> liveAccounts = [];
+
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          final facultyMap = <String, String?>{
+            'name': data['name']?.toString() ?? 'Unknown Faculty',
+            'designation': data['designation']?.toString() ?? 'Faculty Member',
+            'department': data['department']?.toString() ?? 'General',
+            'email': data['email']?.toString(),
+            'phone': data['phone']?.toString(),
+            'accessLevel': data['accessLevel']?.toString() ?? 'Faculty',
+            'role': data['role']?.toString() ?? 'staff',
+            'docId': doc.id,
+          };
+          liveFaculty.add(facultyMap);
+
+          final isMedical = (data['department']?.toString() == 'BAUST Medical Center') ||
+              (data['role'] == 'doctor' || data['role'] == 'pharmacist' || data['role'] == 'nurse');
+
+          liveAccounts.add({
+            'name': data['name'] ?? 'Faculty Member',
+            'email': data['email'],
+            'phone': data['phone'],
+            'role': data['role'] ?? 'staff',
+            'roleDisplay': data['designation'] ?? 'Faculty Member',
+            'department': data['department'] ?? 'Academic Wing',
+            'designation': data['designation'] ?? 'Faculty',
+            'status': 'Verified & Active Personnel',
+            'isSuperAdmin': false,
+            'badgeColor': isMedical ? BaustColors.emergencyRed : BaustColors.primaryNavy,
+          });
+        }
+
+        setState(() {
+          for (final f in liveFaculty) {
+            final exists = _provisionedFaculty.any(
+              (e) => (f['email'] != null && e['email'] == f['email']) || e['name'] == f['name'],
+            );
+            if (!exists) {
+              _provisionedFaculty.insert(0, f);
+            }
+          }
+
+          for (final a in liveAccounts) {
+            final exists = _systemAccounts.any(
+              (e) => (a['email'] != null && e['email'] == a['email']) || e['name'] == a['name'],
+            );
+            if (!exists) {
+              _systemAccounts.add(a);
+            }
+          }
+        });
+      }, onError: (e) {
+        debugPrint('[SuperAdmin] Notice loading faculty from Firestore: $e');
+      });
+    } catch (e) {
+      debugPrint('[SuperAdmin] Error attaching faculty listener: $e');
+    }
+  }
+
   void _openAddFacultyModal() {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
@@ -268,12 +342,12 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
+        builder: (modalCtx, setModalState) => Padding(
           padding: EdgeInsets.only(
             left: 24,
             right: 24,
             top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 24,
           ),
           child: SingleChildScrollView(
             child: Form(
@@ -322,11 +396,20 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
-                      labelText: 'Institutional Email',
+                      labelText: 'Institutional / Contact Email',
                       hintText: 'faculty@baust.edu.bd',
                       prefixIcon: Icon(Icons.email_outlined, color: BaustColors.primaryNavy),
                     ),
-                    validator: (v) => (v == null || !v.contains('@')) ? 'Valid university email is required' : null,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Email address is required';
+                      }
+                      final clean = v.trim().toLowerCase();
+                      if (!clean.contains('@') || !clean.contains('.')) {
+                        return 'Enter a valid email address (e.g. name@domain.com)';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 14),
 
@@ -398,33 +481,149 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    icon: const Icon(Icons.how_to_reg),
-                    label: const Text('Provision & Assign Role', style: TextStyle(fontWeight: FontWeight.bold)),
-                    onPressed: () {
-                      if (formKey.currentState!.validate()) {
-                        final newFaculty = {
-                          'name': nameController.text.trim(),
-                          'designation': selectedDesignation,
-                          'department': selectedDept,
-                          'email': emailController.text.trim().toLowerCase(),
-                          'phone': phoneController.text.trim(),
-                          'accessLevel': selectedRole,
-                        };
+                    icon: _isProvisioningFaculty
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.how_to_reg),
+                    label: Text(
+                      _isProvisioningFaculty ? 'Provisioning...' : 'Provision & Assign Role',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: _isProvisioningFaculty
+                        ? null
+                        : () async {
+                            if (formKey.currentState!.validate()) {
+                              setModalState(() => _isProvisioningFaculty = true);
 
-                        setState(() {
-                          _provisionedFaculty.insert(0, newFaculty);
-                        });
+                              final messenger = ScaffoldMessenger.of(context);
+                              final email = emailController.text.trim().toLowerCase();
+                              final name = nameController.text.trim();
+                              final phone = phoneController.text.trim().isEmpty ? null : phoneController.text.trim();
 
-                        Navigator.pop(ctx);
+                              String resolvedRole = 'staff';
+                              final roleLower = selectedRole.toLowerCase();
+                              if (roleLower.contains('doctor') || roleLower.contains('medical chief')) {
+                                resolvedRole = 'doctor';
+                              } else if (roleLower.contains('pharmacist') || roleLower.contains('medical assistant')) {
+                                resolvedRole = 'pharmacist';
+                              } else if (roleLower.contains('nurse')) {
+                                resolvedRole = 'nurse';
+                              }
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: BaustColors.successGreen,
-                            content: Text('Successfully provisioned ${newFaculty['name']} as ${newFaculty['accessLevel']}!'),
-                          ),
-                        );
-                      }
-                    },
+                              final newFaculty = <String, String?>{
+                                'name': name,
+                                'designation': selectedDesignation,
+                                'department': selectedDept,
+                                'email': email,
+                                'phone': phone,
+                                'accessLevel': selectedRole,
+                                'role': resolvedRole,
+                              };
+
+                              try {
+                                // Save to Firestore faculty collection
+                                await FirebaseFirestore.instance
+                                    .collection(FirestoreCollections.faculty)
+                                    .add({
+                                  ...newFaculty,
+                                  'provisionedAt': FieldValue.serverTimestamp(),
+                                  'provisionedBy': AuthConfig.superAdminEmail,
+                                  'status': 'active',
+                                });
+
+                                // Also ensure any existing user document is upgraded with this role
+                                try {
+                                  final usersByEmail = await FirebaseFirestore.instance
+                                      .collection(FirestoreCollections.users)
+                                      .where('email', isEqualTo: email)
+                                      .limit(1)
+                                      .get();
+                                  if (usersByEmail.docs.isNotEmpty) {
+                                    await usersByEmail.docs.first.reference.update({
+                                      'role': resolvedRole,
+                                      'designation': selectedDesignation,
+                                      'department': selectedDept,
+                                      'accessLevel': selectedRole,
+                                      'approved': true,
+                                      'verificationStatus': 'verified',
+                                    });
+                                  }
+                                } catch (_) {}
+
+                                setState(() {
+                                  _provisionedFaculty.insert(0, newFaculty);
+                                  _systemAccounts.add({
+                                    'name': name,
+                                    'email': email,
+                                    'phone': phone,
+                                    'role': resolvedRole,
+                                    'roleDisplay': selectedDesignation,
+                                    'department': selectedDept,
+                                    'designation': selectedDesignation,
+                                    'status': 'Verified & Active Personnel',
+                                    'isSuperAdmin': false,
+                                    'badgeColor': (resolvedRole == 'doctor' || resolvedRole == 'pharmacist')
+                                        ? BaustColors.emergencyRed
+                                        : BaustColors.primaryNavy,
+                                  });
+                                });
+
+                                if (ctx.mounted) Navigator.pop(ctx);
+
+                                messenger.clearSnackBars();
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: BaustColors.successGreen,
+                                    content: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle, color: Colors.white),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text('✅ Successfully provisioned $name as $selectedRole!'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              } catch (e) {
+                                // Fallback: still add locally
+                                setState(() {
+                                  _provisionedFaculty.insert(0, newFaculty);
+                                  _systemAccounts.add({
+                                    'name': name,
+                                    'email': email,
+                                    'phone': phone,
+                                    'role': resolvedRole,
+                                    'roleDisplay': selectedDesignation,
+                                    'department': selectedDept,
+                                    'designation': selectedDesignation,
+                                    'status': 'Locally Provisioned',
+                                    'isSuperAdmin': false,
+                                    'badgeColor': BaustColors.primaryNavy,
+                                  });
+                                });
+
+                                if (ctx.mounted) Navigator.pop(ctx);
+
+                                messenger.clearSnackBars();
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.orange.shade800,
+                                    content: Row(
+                                      children: [
+                                        const Icon(Icons.cloud_off, color: Colors.white),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text('⚠️ Provisioned locally ($name). Cloud notice: $e'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              } finally {
+                                _isProvisioningFaculty = false;
+                              }
+                            }
+                          },
                   ),
                 ],
               ),

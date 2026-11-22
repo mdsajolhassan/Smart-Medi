@@ -358,6 +358,43 @@ class AuthNotifier extends Notifier<AuthState> {
             profileCompleted: true,
             onboardingStatus: 'COMPLETED',
           );
+        } else if (profile.role == 'student' && firebaseUser.email != null) {
+          try {
+            final facultySnap = await firestore
+                .collection(FirestoreCollections.faculty)
+                .where('email', isEqualTo: firebaseUser.email!.trim().toLowerCase())
+                .limit(1)
+                .get();
+            if (facultySnap.docs.isNotEmpty) {
+              final fData = facultySnap.docs.first.data();
+              final assignedRole = fData['role']?.toString() ?? 'staff';
+              final assignedDesig = fData['designation']?.toString() ?? 'Faculty Member';
+              final assignedAccess = fData['accessLevel']?.toString() ?? 'Faculty';
+              final assignedDept = fData['department']?.toString() ?? profile.department;
+              profile = profile.copyWith(
+                role: assignedRole,
+                designation: assignedDesig,
+                accessLevel: assignedAccess,
+                department: assignedDept,
+                verificationStatus: 'verified',
+                onboardingStatus: 'COMPLETED',
+                profileCompleted: true,
+              );
+              await firestore.collection(FirestoreCollections.users).doc(firebaseUser.uid).set({
+                'role': assignedRole,
+                'designation': assignedDesig,
+                'accessLevel': assignedAccess,
+                'department': assignedDept,
+                'approved': true,
+                'verificationStatus': 'verified',
+                'onboardingStatus': 'COMPLETED',
+                'profileCompleted': true,
+              }, SetOptions(merge: true));
+              debugPrint('[Auth] ✅ Upgraded provisioned account ($assignedRole): ${firebaseUser.email}');
+            }
+          } catch (e) {
+            debugPrint('[Auth] Notice checking provisioned role on login: $e');
+          }
         }
         state = AuthState(status: AuthStatus.authenticated, userProfile: profile);
 

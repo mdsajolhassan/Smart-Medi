@@ -30,12 +30,12 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
     _currentIndex = widget.initialTabIndex;
   }
 
-  String _getTabTitle(int index) {
+  String _getTabTitle(int index, bool isSuperAdmin) {
     switch (index) {
       case 0:
         return 'Emergency Medical SOS';
       case 1:
-        return 'Student Profile & Location';
+        return isSuperAdmin ? 'Institutional Profile & Admin' : 'Student Profile & Location';
       case 2:
         return 'Campus Blood Bank';
       case 3:
@@ -88,7 +88,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
             ),
             Flexible(
               child: Text(
-                _getTabTitle(_currentIndex),
+                _getTabTitle(_currentIndex, isSuperAdmin),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
