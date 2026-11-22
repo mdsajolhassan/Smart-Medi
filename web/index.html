@@ -1,4 +1,6 @@
-<!DOCTYPE html><html><head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
   <!--
     If you are serving your web app in a path other than the root, change the
     href value below to reflect the base path you are serving from.
@@ -16,19 +18,49 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
 
-  <!-- iOS meta tags & icons -->
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Smart Medi - BAUST Medical Center's integrated campus healthcare & emergency management system. AI-powered prescriptions, blood bank, emergency SOS, and more.">
+  <meta name="keywords" content="Smart Medi, BAUST, Medical Center, Healthcare, Emergency, SOS, Blood Bank, AI Prescription, Saidpur Cantonment">
+  <meta name="author" content="MD. Sajol Hassan - BAUST CSE">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph / Social Media -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://smart-medi-xi.vercel.app/">
+  <meta property="og:title" content="Smart Medi — BAUST Medical Center">
+  <meta property="og:description" content="AI-powered campus healthcare & emergency management system for Bangladesh Army University of Science and Technology.">
+  <meta property="og:image" content="https://smart-medi-xi.vercel.app/icons/Icon-512.png">
+  <meta property="og:site_name" content="Smart Medi">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Smart Medi — BAUST Medical Center">
+  <meta name="twitter:description" content="AI-powered campus healthcare & emergency management system for BAUST.">
+  <meta name="twitter:image" content="https://smart-medi-xi.vercel.app/icons/Icon-512.png">
+
+  <!-- Theme & PWA -->
+  <meta name="theme-color" content="#245122">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Smart Medi">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/Icon-192.png">
 
-  <title>Smart Medi - BAUST Medical Center</title>
+  <title>Smart Medi — BAUST Medical Center</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Preconnect to Firebase & Google APIs for faster loading -->
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+  <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com">
+
   <style id="splash-screen-style">
     html {
       height: 100%
@@ -38,7 +70,7 @@
       margin: 0;
       min-height: 100%;
       background-color: #ffffff;
-          background-size: 100% 100%;
+      background-size: 100% 100%;
     }
 
     .center {
@@ -86,11 +118,28 @@
       bottom: 0;
       right: 0;
     }
+
+    /* Loading indicator */
+    .loading-text {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      color: #245122;
+      opacity: 0;
+      animation: fadeIn 1s ease-in 2s forwards;
+    }
+    @keyframes fadeIn {
+      to { opacity: 0.7; }
+    }
   </style>
   <script id="splash-screen-script">
     function removeSplashFromWeb() {
       document.getElementById("splash")?.remove();
       document.getElementById("splash-branding")?.remove();
+      document.getElementById("loading-indicator")?.remove();
       document.body.style.background = "transparent";
     }
   </script>
@@ -102,15 +151,7 @@
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
   </picture>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async=""></script>
-
-
-</body></html>
+  <div id="loading-indicator" class="loading-text">Loading Smart Medi...</div>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

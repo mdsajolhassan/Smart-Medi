@@ -5,9 +5,12 @@
     "display": "standalone",
     "background_color": "#245122",
     "theme_color": "#245122",
-    "description": "Smart Medi - BAUST Medical Center emergency & health system.",
+    "description": "AI-powered campus healthcare & emergency management system for Bangladesh Army University of Science and Technology (BAUST), Saidpur Cantonment.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "categories": ["medical", "health", "education"],
+    "lang": "en",
+    "scope": "/",
     "icons": [
         {
             "src": "icons/Icon-192.png",
@@ -31,5 +34,7 @@
             "type": "image/png",
             "purpose": "maskable"
         }
-    ]
+    ],
+    "screenshots": [],
+    "related_applications": []
 }
