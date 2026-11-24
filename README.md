@@ -106,12 +106,7 @@ flutter analyze
 flutter test        # 143 tests
 ```
 
-## Credits
 
-- **Md. Sajol Hassan**: Lead Software Engineer & System Architect, Dept. of CSE, BAUST
-- **Abdullah Al Galib Tonmoy**: Developer
-- **Dr. Md Nakib Hayat Chowdhury**: Academic Advisor & Project Patron, Head of CSE, BAUST
-- **BAUST Medical Center**: clinical consultation
 
 Bangladesh Army University of Science and Technology (BAUST), Saidpur Cantonment, Nilphamari, Bangladesh ·
 [www.baust.edu.bd](https://www.baust.edu.bd)
