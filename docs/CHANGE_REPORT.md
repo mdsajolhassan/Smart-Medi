@@ -142,3 +142,24 @@ Firestore rules unit tests (`rules_tests/`) need the emulator: `firebase emulato
 * `.env` (AI keys) is bundled into the web/app build — move AI calls to a Cloud Function before public release.
 * Firebase Auth records of removed users still exist (soft delete); full deletion needs the Admin SDK.
 * Update `rules_tests/` for the new role model.
+
+---
+
+## 10. Deployment status (pending)
+
+**GitHub:** PR #10 merged into `main` on 24 Nov 2026 (`e14d2f2`).
+
+**Vercel (not set up yet):**
+* The repo is connected to two Vercel projects, `smart_medi` and `smart-medi`, both owned by the repo owner's Vercel team
+  (`sajol2`). Environment variables can only be added there by a member of that team.
+* `vercel.json` only defines rewrites and headers. There is no build command, so Vercel does not run `flutter build web`.
+* The Flutter web build needs a `.env` file (it is bundled as an asset), and `.env` is git-ignored.
+
+**Plan for later:**
+1. Use a Vercel project you control (your own account, or get added to the `sajol2` team).
+2. Add the variables from `.env.example` as Vercel environment variables (`GEMINI_API_KEY_1`, `ALT_AI_API_KEY`,
+   `ALT_AI_MODELS`, `AI_PRIMARY_PROVIDER`, …).
+3. Add a build step that installs Flutter, writes `.env` from those variables, runs `flutter build web --release`,
+   and serves `build/web` (`outputDirectory`).
+4. Before going public: rotate the OpenRouter/Gemini keys (they were shared in chat), and ideally move AI calls to a
+   Cloud Function, because anything in `.env` ends up readable in the deployed web files.
