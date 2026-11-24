@@ -210,10 +210,10 @@ void main() {
       await tester.tap(simulateButton);
       await tester.pumpAndSettle();
 
-      // Verify dynamic student alert for MD. Sajol Hassan is displayed in queue
-      expect(find.text('MD. Sajol Hassan'), findsWidgets);
-      expect(find.textContaining('0802420205101137'), findsWidgets);
-      expect(find.textContaining('Shaheed Dr. Zikrul Haque Hall (SDZHH)'), findsWidgets);
+      // Verify dynamic student alert for Demo Student is displayed in queue
+      expect(find.text('Demo Student'), findsWidgets);
+      expect(find.textContaining('0802420205109001'), findsWidgets);
+      expect(find.textContaining('Abbas Uddin Ahmed Hall (AUAH)'), findsWidgets);
       expect(find.text('DISPATCH AMBULANCE'), findsOneWidget);
       expect(find.text('Document Check-In'), findsOneWidget);
 
@@ -228,7 +228,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       // Verify snackbar confirmation
-      expect(find.textContaining('Documented in Medical Center Staff Log for MD. Sajol Hassan'), findsOneWidget);
+      expect(find.textContaining('Documented in Medical Center Staff Log for Demo Student'), findsOneWidget);
     });
   });
 }

@@ -20,20 +20,20 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "smart-medi-b25ef",
-          "appId": "1:506130896245:android:f4f177ccf86e5f4dfe6f3c",
+          "projectId": "smart-medi-galib",
+          "appId": "1:926730215261:android:0dfa3334a469be9f4092b4",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "smart-medi-b25ef",
+          "projectId": "smart-medi-galib",
           "configurations": {
-            "android": "1:506130896245:android:f4f177ccf86e5f4dfe6f3c",
-            "ios": "1:506130896245:ios:6c87f2163fb75b50fe6f3c",
-            "macos": "1:506130896245:ios:6c87f2163fb75b50fe6f3c",
-            "web": "1:506130896245:web:886f18ae9d9685aafe6f3c",
-            "windows": "1:506130896245:web:12501abc85025251fe6f3c"
+            "android": "1:926730215261:android:0dfa3334a469be9f4092b4",
+            "ios": "1:926730215261:ios:211f9722c59b941c4092b4",
+            "macos": "1:926730215261:ios:211f9722c59b941c4092b4",
+            "web": "1:926730215261:web:09e4d63ec7ee59264092b4",
+            "windows": "1:926730215261:web:09e4d63ec7ee59264092b4"
           }
         }
       }

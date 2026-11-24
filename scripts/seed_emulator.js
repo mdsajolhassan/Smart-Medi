@@ -14,7 +14,7 @@
 
 const { initializeTestEnvironment } = require('../rules_tests/node_modules/@firebase/rules-unit-testing');
 
-const PROJECT_ID = 'smart-medi-b25ef';
+const PROJECT_ID = 'smart-medi-galib';
 const AUTH_HOST = 'http://127.0.0.1:9099';
 const FIRESTORE_HOST = '127.0.0.1';
 const FIRESTORE_PORT = 8080;

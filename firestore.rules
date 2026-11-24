@@ -3,18 +3,24 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // =========================================================================
-    // ABSOLUTE SUPER ADMIN OVERRIDE (HIGHEST PRECEDENCE)
+    // ROLES: student | doctor | admin | superadmin
+    // There is NO global bypass: admins and super admins only get the access
+    // granted per collection below (no reading other users' medical records,
+    // no acting as another user).
     // =========================================================================
-    function isSuperAdmin() {
+    function isBootstrapSuperAdmin() {
       return request.auth != null
         && request.auth.token.email_verified == true
         && request.auth.token.firebase.sign_in_provider == 'google.com'
-        && request.auth.token.email == 'mdsajolhasan5@gmail.com';
+        && request.auth.token.email == 'serviceprovidergalib@gmail.com';
     }
 
-    // Global bypass rule for Super Administrator: grants unrestricted read/write everywhere
-    match /{document=**} {
-      allow read, write: if isSuperAdmin();
+    function isSuperAdmin() {
+      return isBootstrapSuperAdmin() || (request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('approved', false) == true
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('accountStatus', 'active') != 'removed');
     }
 
     // =========================================================================
@@ -48,7 +54,8 @@ service cloud.firestore {
     function isMember() {
       return emailVerified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && userDoc(request.auth.uid).verificationStatus == 'verified';
+        && userDoc(request.auth.uid).verificationStatus == 'verified'
+        && userDoc(request.auth.uid).get('accountStatus', 'active') != 'removed';
     }
 
     function isDoctor() {
@@ -62,7 +69,13 @@ service cloud.firestore {
       return isSuperAdmin() || (emailVerified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && (userDoc(request.auth.uid).role == 'admin' || userDoc(request.auth.uid).role == 'superadmin')
-        && userDoc(request.auth.uid).get('approved', false) == true);
+        && userDoc(request.auth.uid).get('approved', false) == true
+        && userDoc(request.auth.uid).get('accountStatus', 'active') != 'removed');
+    }
+
+    // Roles the caller may assign to other accounts
+    function assignableRoles() {
+      return isSuperAdmin() ? ['student', 'doctor', 'admin'] : ['student', 'doctor'];
     }
 
     function isPharmacist() {
@@ -73,15 +86,15 @@ service cloud.firestore {
     }
 
     function isMedicalStaff() {
-      return isSuperAdmin() || (emailVerified()
+      // Clinical staff only. Admins/super admins manage accounts, not medical records.
+      return emailVerified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && (userDoc(request.auth.uid).role == 'doctor'
             || userDoc(request.auth.uid).role == 'pharmacist'
             || userDoc(request.auth.uid).role == 'medical_assistant'
-            || userDoc(request.auth.uid).role == 'nurse'
-            || userDoc(request.auth.uid).role == 'admin'
-            || userDoc(request.auth.uid).role == 'superadmin')
-        && userDoc(request.auth.uid).get('approved', false) == true);
+            || userDoc(request.auth.uid).role == 'nurse')
+        && userDoc(request.auth.uid).get('approved', false) == true
+        && userDoc(request.auth.uid).get('accountStatus', 'active') != 'removed';
     }
 
     function bgNotVerified() {
@@ -92,14 +105,32 @@ service cloud.firestore {
     // 1. users/{uid}
     // =========================================================================
     match /users/{uid} {
-      allow read, write: if isSuperAdmin();
-      allow read: if isOwner(uid);
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Admin adds a user manually (password is set by the user via reset email)
+      allow create: if isAdmin()
+        && request.auth.uid != uid
+        && request.resource.data.role in assignableRoles()
+        && request.resource.data.get('accountStatus', 'active') == 'active'
+        && request.resource.data.get('bloodGroupVerified', false) == false;
+
+      // Admin changes role / removes / restores another (non-superadmin) account
+      allow update: if isAdmin()
+        && request.auth.uid != uid
+        && resource.data.get('role', 'student') != 'superadmin'
+        && (resource.data.get('role', 'student') != 'admin' || isSuperAdmin())
+        && request.resource.data.role in assignableRoles()
+        && request.resource.data.get('accountStatus', 'active') in ['active', 'removed']
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['role', 'approved', 'accountStatus', 'removedBy', 'roleChangedBy', 'updatedAt',
+                       'idVerificationStatus', 'idReviewNote', 'idReviewedBy', 'idReviewedAt']);
 
       // Signup happens BEFORE email verification, so isMember() is NOT required for initial creation
       allow create: if isOwner(uid)
         && request.resource.data.role == 'student'
         && request.resource.data.get('bloodGroupVerified', false) == false
         && request.resource.data.get('approved', false) == false
+        && request.resource.data.get('idVerificationStatus', 'not_submitted') == 'not_submitted'
         && request.resource.data.emailType == (isUniEmail() ? 'university' : 'personal')
         && request.resource.data.verificationStatus == (isUniEmail() ? 'verified' : 'pending')
         && request.resource.data.get('uid', uid) == uid
@@ -107,7 +138,15 @@ service cloud.firestore {
 
       allow update: if isOwner(uid)
         && !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['role','verificationStatus','bloodGroupVerified','emailType','approved','uid','email']);
+             .hasAny(['role','verificationStatus','bloodGroupVerified','emailType','approved','uid','email',
+                      'idReviewNote','idReviewedBy','idReviewedAt','accountStatus','removedBy','roleChangedBy','createdBy'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['idVerificationStatus'])
+            || request.resource.data.idVerificationStatus == 'pending');
+
+      // Admins approve/reject student ID verification
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['idVerificationStatus','idReviewNote','idReviewedBy','idReviewedAt']);
 
       allow delete: if false;
     }
@@ -303,6 +342,51 @@ service cloud.firestore {
         && (!('advice' in request.resource.data) || request.resource.data.advice is string)
         && (!('followUpDate' in request.resource.data) || request.resource.data.followUpDate is timestamp);
       allow update, delete: if false;
+    }
+
+    // =========================================================================
+    // id_verifications/{uid} (student ID card photo, compressed, for admin review)
+    // =========================================================================
+    match /id_verifications/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create, update: if isOwner(uid) && emailVerified()
+        && request.resource.data.keys().hasOnly([
+             'uid', 'status', 'imageBase64', 'mimeType', 'displayName', 'studentRoll',
+             'department', 'email', 'aiCheck', 'submittedAt'
+           ])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.uid == uid
+        && request.resource.data.imageBase64 is string
+        && request.resource.data.imageBase64.size() < 900000
+        && request.resource.data.mimeType in ['image/jpeg', 'image/png'];
+
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'reviewNote', 'reviewedBy', 'reviewedAt', 'imageBase64'])
+        && request.resource.data.status in ['verified', 'rejected'];
+
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // feedback/{id} (feedback & bug reports: anyone submits, super admin reviews)
+    // =========================================================================
+    match /feedback/{id} {
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+             'uid', 'email', 'displayName', 'role', 'type', 'message', 'screen', 'platform', 'status', 'createdAt'
+           ])
+        && request.resource.data.type in ['bug', 'feedback', 'suggestion']
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.status == 'open';
+      allow read: if isSuperAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'adminNote', 'resolvedBy', 'updatedAt']);
+      allow delete: if isSuperAdmin();
     }
 
     // =========================================================================

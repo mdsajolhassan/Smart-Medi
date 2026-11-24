@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../config/auth_config.dart';
 import '../constants/baust_constants.dart';
-import '../../features/admin_portal/presentation/screens/superadmin_dashboard.dart';
 import '../../features/advisor_portal/presentation/screens/staff_dashboard_screen.dart';
 import '../../features/auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../features/blood_bank/presentation/screens/blood_donor_directory.dart';
@@ -11,16 +11,18 @@ import '../../features/medical_operations/presentation/screens/doctor_dashboard_
 import '../../features/medical_operations/presentation/screens/patient_checkin_log_screen.dart';
 import '../../features/medical_operations/presentation/screens/patient_lookup_screen.dart';
 import '../../features/medical_operations/presentation/screens/pharmacist_inventory_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../../features/admin_portal/presentation/screens/id_verification_review_screen.dart';
+import '../../features/admin_portal/presentation/screens/admin_console_screen.dart';
+import '../../features/admin_portal/presentation/screens/feedback_screens.dart';
+import '../../features/admin_portal/presentation/screens/user_management_screen.dart';
 
 /// Unified Side Drawer providing enterprise-grade navigation, profile summary,
 /// and role-aware operational routing across all Smart Medi dashboards.
 class SmartMediDrawer extends ConsumerWidget {
   final String? activeRoute;
 
-  const SmartMediDrawer({
-    super.key,
-    this.activeRoute,
-  });
+  const SmartMediDrawer({super.key, this.activeRoute});
 
   String _formatRoleDisplay(String role) {
     switch (role.toLowerCase()) {
@@ -68,16 +70,12 @@ class SmartMediDrawer extends ConsumerWidget {
     final authState = ref.watch(authControllerProvider);
     final user = authState.userProfile;
     final role = user?.role.toLowerCase() ?? 'student';
-    final isSuperAdmin = user?.isSuperAdmin == true ||
-        role == 'superadmin' ||
-        role == 'admin' ||
-        AuthConfig.isSuperAdminEmail(user?.email ?? '');
+    final isSuperAdmin = user?.isSuperAdmin == true || AuthConfig.isSuperAdminEmail(user?.email ?? '');
+    final isAdmin = isSuperAdmin || user?.isAdmin == true;
 
     final roleColor = _getRoleColor(role);
     final displayName = user?.displayName;
-    final initial = (displayName != null && displayName.isNotEmpty)
-        ? displayName[0].toUpperCase()
-        : 'U';
+    final initial = (displayName != null && displayName.isNotEmpty) ? displayName[0].toUpperCase() : 'U';
 
     return Drawer(
       backgroundColor: Colors.white,
@@ -90,18 +88,10 @@ class SmartMediDrawer extends ConsumerWidget {
             // ==========================================
             Container(
               width: double.infinity,
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 20,
-                left: 20,
-                right: 20,
-                bottom: 20,
-              ),
+              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 20, left: 20, right: 20, bottom: 20),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    BaustColors.armyGreenDark,
-                    BaustColors.primaryArmyGreen,
-                  ],
+                  colors: [BaustColors.armyGreenDark, BaustColors.primaryArmyGreen],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -140,11 +130,7 @@ class SmartMediDrawer extends ConsumerWidget {
                               user?.displayName ?? 'Smart Medi User',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -153,10 +139,7 @@ class SmartMediDrawer extends ConsumerWidget {
                                   : (user?.email ?? 'user@baust.edu.bd'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
+                              style: const TextStyle(color: Colors.white70, fontSize: 12),
                             ),
                           ],
                         ),
@@ -209,11 +192,7 @@ class SmartMediDrawer extends ConsumerWidget {
                               (user?.verificationStatus == 'verified' || isSuperAdmin)
                                   ? 'Verified'
                                   : 'Pending Approval',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -234,7 +213,10 @@ class SmartMediDrawer extends ConsumerWidget {
                   _buildSectionLabel('OPERATIONAL NAVIGATION'),
 
                   // 1. Role-Specific Primary Dashboard
-                  if (role == 'doctor' || role == 'medical_officer' || role == 'medical_assistant' || role == 'nurse') ...[
+                  if (role == 'doctor' ||
+                      role == 'medical_officer' ||
+                      role == 'medical_assistant' ||
+                      role == 'nurse') ...[
                     _buildNavTile(
                       context,
                       icon: Icons.local_hospital_outlined,
@@ -255,10 +237,7 @@ class SmartMediDrawer extends ConsumerWidget {
                       subtitle: 'Browse by department or lookup ID',
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PatientLookupScreen()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientLookupScreen()));
                       },
                     ),
                     _buildNavTile(
@@ -268,10 +247,7 @@ class SmartMediDrawer extends ConsumerWidget {
                       subtitle: 'Physical clinic walk-ins & tracker',
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
                       },
                     ),
                     _buildNavTile(
@@ -281,10 +257,7 @@ class SmartMediDrawer extends ConsumerWidget {
                       subtitle: 'Medicine stock & multiplier dispense',
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()));
                       },
                     ),
                   ] else if (role == 'pharmacist') ...[
@@ -308,10 +281,7 @@ class SmartMediDrawer extends ConsumerWidget {
                       subtitle: 'Daily clinic visit roster',
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
                       },
                     ),
                     _buildNavTile(
@@ -321,10 +291,7 @@ class SmartMediDrawer extends ConsumerWidget {
                       subtitle: 'View live emergency consultations',
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()));
                       },
                     ),
                   ] else if (role == 'staff' || role == 'faculty') ...[
@@ -387,15 +354,22 @@ class SmartMediDrawer extends ConsumerWidget {
                   // Common Campus Utilities
                   _buildNavTile(
                     context,
+                    icon: Icons.manage_accounts_outlined,
+                    title: 'Edit My Profile',
+                    subtitle: 'Update personal & role details',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+                    },
+                  ),
+                  _buildNavTile(
+                    context,
                     icon: Icons.volunteer_activism_outlined,
                     title: 'Campus Blood Bank',
                     subtitle: 'Directory of voluntary student donors',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()),
-                      );
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()));
                     },
                   ),
 
@@ -404,38 +378,67 @@ class SmartMediDrawer extends ConsumerWidget {
                   // ==========================================
                   // ADMIN / PRIVILEGED SECTION
                   // ==========================================
-                  if (isSuperAdmin) ...[
-                    _buildSectionLabel('ADMINISTRATIVE PRIVILEGES'),
+                  if (isAdmin) ...[
+                    _buildSectionLabel(isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN'),
                     _buildNavTile(
                       context,
-                      icon: Icons.admin_panel_settings_outlined,
-                      title: 'Super Admin Control Center',
-                      subtitle: 'Account approvals, logs & test tools',
+                      icon: Icons.space_dashboard_outlined,
+                      title: isSuperAdmin ? 'Super Admin Console' : 'Admin Console',
+                      subtitle: 'Overview & management',
                       titleColor: const Color(0xFFD97706),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const SuperAdminDashboard()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminConsoleScreen()));
                       },
                     ),
                     _buildNavTile(
                       context,
-                      icon: Icons.switch_account_outlined,
-                      title: 'Switch Role / Test View',
-                      subtitle: 'Simulate any university portal',
+                      icon: Icons.manage_accounts_outlined,
+                      title: 'User Management',
+                      subtitle: isSuperAdmin ? 'Students, doctors & admins' : 'Students & doctors',
                       onTap: () {
                         Navigator.pop(context);
-                        _showRoleSwitcherDialog(context, ref);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen()));
                       },
                     ),
+                    _buildNavTile(
+                      context,
+                      icon: Icons.badge_outlined,
+                      title: 'Student ID Verification',
+                      subtitle: 'Approve new student accounts',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const IdVerificationReviewScreen()));
+                      },
+                    ),
+                    if (isSuperAdmin)
+                      _buildNavTile(
+                        context,
+                        icon: Icons.bug_report_outlined,
+                        title: 'Feedback & Bug Reports',
+                        subtitle: 'Reports from all users',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedbackInboxScreen()));
+                        },
+                      ),
                     const Divider(height: 24, thickness: 1),
                   ],
 
                   // ==========================================
                   // SESSION & LOGOUT
                   // ==========================================
+                  if (!isSuperAdmin)
+                    _buildNavTile(
+                      context,
+                      icon: Icons.feedback_outlined,
+                      title: 'Feedback / Report a Bug',
+                      subtitle: 'Tell the Smart Medi team',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SendFeedbackScreen()));
+                      },
+                    ),
                   _buildSectionLabel('SESSION'),
                   _buildNavTile(
                     context,
@@ -464,11 +467,7 @@ class SmartMediDrawer extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Image.asset(
-                    'assets/branding/smart_medi_icon_1024.png',
-                    height: 24,
-                    width: 24,
-                  ),
+                  Image.asset('assets/branding/smart_medi_icon_1024.png', height: 24, width: 24),
                   const SizedBox(width: 10),
                   const Expanded(
                     child: Column(
@@ -476,11 +475,7 @@ class SmartMediDrawer extends ConsumerWidget {
                       children: [
                         Text(
                           'Smart Medi • BAUST Medical Center',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: BaustColors.textDark,
-                          ),
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.textDark),
                         ),
                         Text(
                           'Military University Medical Automation',
@@ -531,21 +526,13 @@ class SmartMediDrawer extends ConsumerWidget {
           color: (iconColor ?? BaustColors.primaryArmyGreen).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: iconColor ?? BaustColors.primaryArmyGreen,
-        ),
+        child: Icon(icon, size: 20, color: iconColor ?? BaustColors.primaryArmyGreen),
       ),
       title: Text(
         title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: titleColor ?? BaustColors.textDark,
-        ),
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: titleColor ?? BaustColors.textDark),
       ),
       subtitle: subtitle != null
           ? Text(
@@ -557,92 +544,6 @@ class SmartMediDrawer extends ConsumerWidget {
           : null,
       trailing: const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
       onTap: onTap,
-    );
-  }
-
-  void _showRoleSwitcherDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.switch_account, color: BaustColors.primaryArmyGreen),
-            SizedBox(width: 8),
-            Text('Switch Active Portal (Demo)'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.school, color: BaustColors.primaryArmyGreen),
-              title: const Text('Student Portal'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ref.read(authControllerProvider.notifier).switchDemoRoleForTesting('student');
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MainDashboardScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.medical_services, color: Color(0xFF0284C7)),
-              title: const Text('Doctor Portal'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ref.read(authControllerProvider.notifier).switchDemoRoleForTesting('doctor');
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.medication, color: Color(0xFF0D9488)),
-              title: const Text('Pharmacist Portal'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ref.read(authControllerProvider.notifier).switchDemoRoleForTesting('pharmacist');
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.account_balance, color: Color(0xFF4F46E5)),
-              title: const Text('Faculty Portal'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ref.read(authControllerProvider.notifier).switchDemoRoleForTesting('staff');
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StaffDashboardScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.shield, color: Color(0xFFD97706)),
-              title: const Text('Super Admin Portal'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ref.read(authControllerProvider.notifier).switchDemoRoleForTesting('superadmin');
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SuperAdminDashboard()),
-                );
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
     );
   }
 }

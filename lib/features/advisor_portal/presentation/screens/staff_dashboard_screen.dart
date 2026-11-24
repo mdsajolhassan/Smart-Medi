@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../../../core/widgets/smart_medi_drawer.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
+import '../../../../core/widgets/responsive.dart';
 
 class StaffDashboardScreen extends ConsumerStatefulWidget {
   const StaffDashboardScreen({super.key});
@@ -46,7 +48,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
 
   List<Map<String, dynamic>> _getFilteredStudents(UserProfile? user) {
     final staffDept = user?.department ?? 'Computer Science & Engineering (CSE)';
-    final staffName = user?.displayName ?? 'Dr. Md Nakib Hayat Chowdhury';
+    final staffName = user?.displayName ?? 'Faculty Member';
 
     List<Map<String, dynamic>> results = List.from(_allUniversityStudents);
 
@@ -69,9 +71,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
 
       case 'Batch Coordinator':
         // Batch View: Limited to Coordinator's department and batch
-        results = results
-            .where((s) => s['department'] == staffDept && s['batch'] == '11th Batch')
-            .toList();
+        results = results.where((s) => s['department'] == staffDept && s['batch'] == '11th Batch').toList();
         break;
 
       case 'Advisor':
@@ -106,8 +106,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
     final filteredList = _getFilteredStudents(user);
 
     final emergencyCount = filteredList.where((s) => s['hasEmergency'] == true).length;
-    final criticalFlagCount =
-        filteredList.where((s) => (s['flags'] as List).isNotEmpty).length;
+    final criticalFlagCount = filteredList.where((s) => (s['flags'] as List).isNotEmpty).length;
 
     return Scaffold(
       backgroundColor: BaustColors.surfaceBg,
@@ -142,12 +141,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                 fit: BoxFit.contain,
               ),
             ),
-            const Flexible(
-              child: Text(
-                'Faculty & Advisor Portal',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            const Flexible(child: Text('Faculty & Advisor Portal', overflow: TextOverflow.ellipsis)),
           ],
         ),
         actions: [
@@ -158,92 +152,85 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Faculty Profile Summary Header Card
-            _buildFacultyProfileHeader(user),
+      body: ResponsiveCenter(
+        maxWidth: 1100,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Faculty Profile Summary Header Card
+              _buildFacultyProfileHeader(user),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Dynamic Hierarchy Tier Switcher (Interactive for testing all 4 roles)
-            _buildHierarchyScopeBanner(),
+              // Dynamic Hierarchy Tier Switcher (Interactive for testing all 4 roles)
+              _buildHierarchyScopeBanner(),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Metrics Summary Row
-            _buildMetricsRow(
-              totalCount: filteredList.length,
-              emergencyCount: emergencyCount,
-              criticalCount: criticalFlagCount,
-            ),
-
-            const SizedBox(height: 16),
-
-            // Search and Tier-Specific Filter Controls
-            _buildFiltersCard(),
-
-            const SizedBox(height: 16),
-
-            // Student Roster Section Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'ACTIVE COHORT STUDENTS (${filteredList.length})',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                    color: BaustColors.textMuted,
-                  ),
-                ),
-                Text(
-                  _activeHierarchyTier,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: BaustColors.primaryNavy,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            // Student Cards List
-            if (filteredList.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Column(
-                  children: [
-                    Icon(Icons.search_off, size: 48, color: BaustColors.textMuted),
-                    SizedBox(height: 8),
-                    Text(
-                      'No students assigned yet.',
-                      style: TextStyle(color: BaustColors.textMuted),
-                    ),
-                  ],
-                ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredList.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  return _buildStudentCard(filteredList[index]);
-                },
+              // Metrics Summary Row
+              _buildMetricsRow(
+                totalCount: filteredList.length,
+                emergencyCount: emergencyCount,
+                criticalCount: criticalFlagCount,
               ),
-          ],
+
+              const SizedBox(height: 16),
+
+              // Search and Tier-Specific Filter Controls
+              _buildFiltersCard(),
+
+              const SizedBox(height: 16),
+
+              // Student Roster Section Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'ACTIVE COHORT STUDENTS (${filteredList.length})',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                      color: BaustColors.textMuted,
+                    ),
+                  ),
+                  Text(
+                    _activeHierarchyTier,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.primaryNavy),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              // Student Cards List
+              if (filteredList.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.search_off, size: 48, color: BaustColors.textMuted),
+                      SizedBox(height: 8),
+                      Text('No students assigned yet.', style: TextStyle(color: BaustColors.textMuted)),
+                    ],
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredList.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    return _buildStudentCard(filteredList[index]);
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -270,12 +257,8 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user?.displayName ?? 'Dr. Md Nakib Hayat Chowdhury',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: BaustColors.textDark,
-                  ),
+                  user?.displayName ?? 'Faculty Member',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: BaustColors.textDark),
                 ),
                 Text(
                   '${user?.designation ?? "Head of Department, CSE"} • ${user?.department ?? "Computer Science & Engineering (CSE)"}',
@@ -307,8 +290,8 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
           colors: isExecutive
               ? [const Color(0xFF1E3A8A), const Color(0xFF1E40AF)]
               : isHead
-                  ? [const Color(0xFF0F766E), const Color(0xFF115E59)]
-                  : [const Color(0xFF1E293B), const Color(0xFF334155)],
+              ? [const Color(0xFF0F766E), const Color(0xFF115E59)]
+              : [const Color(0xFF1E293B), const Color(0xFF334155)],
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -320,19 +303,11 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
             children: [
               Row(
                 children: [
-                  Icon(
-                    isExecutive ? Icons.military_tech : Icons.security,
-                    color: Colors.amberAccent,
-                    size: 20,
-                  ),
+                  Icon(isExecutive ? Icons.military_tech : Icons.security, color: Colors.amberAccent, size: 20),
                   const SizedBox(width: 8),
                   const Text(
                     'Active RBAC Governance Tier:',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -340,11 +315,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
               DropdownButton<String>(
                 value: _activeHierarchyTier,
                 dropdownColor: const Color(0xFF1E293B),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                 underline: const SizedBox.shrink(),
                 icon: const Icon(Icons.arrow_drop_down, color: Colors.amberAccent),
                 items: const [
@@ -360,10 +331,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            _getScopeDescription(),
-            style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.3),
-          ),
+          Text(_getScopeDescription(), style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.3)),
         ],
       ),
     );
@@ -383,11 +351,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
     }
   }
 
-  Widget _buildMetricsRow({
-    required int totalCount,
-    required int emergencyCount,
-    required int criticalCount,
-  }) {
+  Widget _buildMetricsRow({required int totalCount, required int emergencyCount, required int criticalCount}) {
     return Row(
       children: [
         _buildMetricTile('Cohort Total', '$totalCount', BaustColors.primaryNavy, Icons.school),
@@ -421,10 +385,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
               value,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
             ),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 10, color: BaustColors.textMuted),
-            ),
+            Text(title, style: const TextStyle(fontSize: 10, color: BaustColors.textMuted)),
           ],
         ),
       ),
@@ -448,10 +409,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
               prefixIcon: const Icon(Icons.search, color: BaustColors.primaryNavy),
               contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
               fillColor: const Color(0xFFF8FAFC),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
             ),
             onChanged: (val) => setState(() => _searchQuery = val),
           ),
@@ -466,10 +424,14 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                 prefixIcon: Icon(Icons.filter_alt_outlined, color: BaustColors.primaryNavy),
                 contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               ),
-              items: [
-                'All Departments',
-                ...BaustDepartments.departments,
-              ].map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
+              items: ['All Departments', ...BaustDepartments.departments]
+                  .map(
+                    (d) => DropdownMenuItem(
+                      value: d,
+                      child: Text(d, style: const TextStyle(fontSize: 12)),
+                    ),
+                  )
+                  .toList(),
               onChanged: (val) {
                 if (val != null) setState(() => _departmentFilter = val);
               },
@@ -523,9 +485,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: hasEmergency
-                      ? Colors.red.shade100
-                      : BaustColors.primaryNavy.withValues(alpha: 0.1),
+                  backgroundColor: hasEmergency ? Colors.red.shade100 : BaustColors.primaryNavy.withValues(alpha: 0.1),
                   child: Icon(
                     hasEmergency ? Icons.notification_important : Icons.person,
                     color: hasEmergency ? BaustColors.emergencyRed : BaustColors.primaryNavy,
@@ -538,10 +498,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            student['name'],
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
+                          Text(student['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                           if (hasEmergency) ...[
                             const SizedBox(width: 6),
                             Container(
@@ -552,11 +509,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                               ),
                               child: const Text(
                                 'ACTIVE SOS',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
@@ -571,17 +524,10 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
+                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
                   child: Text(
                     student['blood'],
-                    style: const TextStyle(
-                      color: BaustColors.emergencyRed,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: BaustColors.emergencyRed, fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ),
               ],
@@ -591,10 +537,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
               children: [
                 const Icon(Icons.apartment, size: 15, color: BaustColors.textMuted),
                 const SizedBox(width: 4),
-                Text(
-                  '${student['hall']}, Room ${student['room']}',
-                  style: const TextStyle(fontSize: 12),
-                ),
+                Text('${student['hall']}, Room ${student['room']}', style: const TextStyle(fontSize: 12)),
                 const Spacer(),
                 const Icon(Icons.co_present, size: 15, color: BaustColors.textMuted),
                 const SizedBox(width: 4),
@@ -615,11 +558,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                     backgroundColor: Colors.amber.shade100,
                     label: Text(
                       flag.toString(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.brown.shade900,
-                      ),
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.brown.shade900),
                     ),
                   );
                 }).toList(),

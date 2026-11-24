@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_medi/core/config/auth_config.dart';
-import 'package:smart_medi/core/constants/baust_constants.dart';
 import 'package:smart_medi/features/admin_portal/presentation/screens/superadmin_dashboard.dart';
 import 'package:smart_medi/features/auth_rbac/presentation/controllers/auth_controller.dart';
 import 'package:smart_medi/features/dashboard/presentation/screens/detailed_medical_history_screen.dart';
@@ -18,15 +17,15 @@ class _MockAuthNotifier extends AuthNotifier {
 
 void main() {
   group('1. Fixed Super Admin Account & Role Mapping Tests', () {
-    test('AuthConfig permanently configures mdsajolhasan5@gmail.com as absolute Super Admin', () {
-      expect(AuthConfig.superAdminEmail, equals('mdsajolhasan5@gmail.com'));
-      expect(AuthConfig.isSuperAdminEmail('mdsajolhasan5@gmail.com'), isTrue);
-      expect(AuthConfig.isSuperAdminEmail('MDSAJOLHASAN5@GMAIL.COM'), isTrue);
+    test('AuthConfig permanently configures serviceprovidergalib@gmail.com as absolute Super Admin', () {
+      expect(AuthConfig.superAdminEmail, equals('serviceprovidergalib@gmail.com'));
+      expect(AuthConfig.isSuperAdminEmail('serviceprovidergalib@gmail.com'), isTrue);
+      expect(AuthConfig.isSuperAdminEmail('SERVICEPROVIDERGALIB@GMAIL.COM'), isTrue);
 
       // Verify email type & verification status
-      expect(AuthConfig.computeEmailType('mdsajolhasan5@gmail.com'), equals('superadmin'));
-      expect(AuthConfig.computeVerificationStatus('mdsajolhasan5@gmail.com'), equals('verified'));
-      expect(AuthConfig.isEmailAllowed('mdsajolhasan5@gmail.com'), isTrue);
+      expect(AuthConfig.computeEmailType('serviceprovidergalib@gmail.com'), equals('superadmin'));
+      expect(AuthConfig.computeVerificationStatus('serviceprovidergalib@gmail.com'), equals('verified'));
+      expect(AuthConfig.isEmailAllowed('serviceprovidergalib@gmail.com'), isTrue);
 
       // Verify personal email without superadmin privileges
       expect(AuthConfig.isSuperAdminEmail('random.student@gmail.com'), isFalse);
@@ -34,11 +33,11 @@ void main() {
       expect(AuthConfig.computeVerificationStatus('random.student@gmail.com'), equals('pending'));
     });
 
-    test('UserProfile evaluates isSuperAdmin strictly for mdsajolhasan5@gmail.com and NOT student Sajol', () {
+    test('UserProfile evaluates isSuperAdmin strictly for serviceprovidergalib@gmail.com and NOT student Sajol', () {
       // Super Admin profile
       final superAdminProfile = UserProfile(
         uid: 'superadmin-001',
-        email: 'mdsajolhasan5@gmail.com',
+        email: 'serviceprovidergalib@gmail.com',
         displayName: 'MD. Sajol Hasan',
         role: 'superadmin',
         accessLevel: 'SuperAdmin',
@@ -65,7 +64,7 @@ void main() {
     test('Super Admin profile initialization and Firestore payload conforms to superadmin specifications', () {
       final superAdminDocData = {
         'uid': 'superadmin-uid-123',
-        'email': 'mdsajolhasan5@gmail.com',
+        'email': 'serviceprovidergalib@gmail.com',
         'displayName': 'MD. Sajol Hasan',
         'role': 'superadmin',
         'emailType': 'superadmin',
@@ -90,7 +89,7 @@ void main() {
 
       // If document previously lacked role='superadmin', verify copyWith override logic
       final legacyDoc = UserProfile.fromFirestore('superadmin-uid-123', {
-        'email': 'mdsajolhasan5@gmail.com',
+        'email': 'serviceprovidergalib@gmail.com',
         'role': 'student',
       });
       final upgraded = legacyDoc.copyWith(
@@ -111,50 +110,10 @@ void main() {
     test('Super Admin bypasses registration domain restrictions and is allowed regardless of policy', () {
       expect(AuthConfig.allowPersonalEmails, isFalse);
       expect(AuthConfig.isEmailAllowed(AuthConfig.superAdminEmail), isTrue);
-      expect(AuthConfig.isEmailAllowed('MDSAJOLHASAN5@GMAIL.COM'), isTrue);
+      expect(AuthConfig.isEmailAllowed('SERVICEPROVIDERGALIB@GMAIL.COM'), isTrue);
       expect(AuthConfig.isEmailAllowed('unauthorized.student@gmail.com'), isFalse);
     });
 
-    test('BaustSeedData medicalStaff and initialFaculty conform strictly to authentic records with zero mock emails', () {
-      // 1. Dr. Fowzia Jahan
-      final fowzia = BaustSeedData.medicalStaff.firstWhere((s) => s['name'] == 'Dr. Fowzia Jahan');
-      expect(fowzia['email'], equals('medicalcenter@baust.edu.bd'));
-      expect(fowzia['phone'], equals('01769-675576'));
-      expect(fowzia['designation'], equals('Senior Medical Officer'));
-      expect(fowzia['role'], equals('doctor'));
-
-      // 2. Md. Mozaffor Hossain (no email, only phone)
-      final mozaffor = BaustSeedData.medicalStaff.firstWhere((s) => s['name'] == 'Md. Mozaffor Hossain');
-      expect(mozaffor['email'], isNull);
-      expect(mozaffor['phone'], equals('01712-645975'));
-      expect(mozaffor['designation'], equals('Medical Assistant'));
-      expect(mozaffor['role'], equals('pharmacist'));
-
-      // 3. Lamia Aktar Limu
-      final limu = BaustSeedData.medicalStaff.firstWhere((s) => s['name'] == 'Lamia Aktar Limu');
-      expect(limu['email'], equals('limuakhtar9@gmail.com'));
-      expect(limu['phone'], equals('01749-898473'));
-      expect(limu['designation'], equals('Staff Nurse'));
-
-      // 4. Dr. Md Nakib Hayat Chowdhury: Strictly Head of Department (CSE), no advisor roles, no mock email
-      final nakib = BaustSeedData.initialFaculty.firstWhere((f) => f['name'] == 'Dr. Md Nakib Hayat Chowdhury');
-      expect(nakib['designation'], equals('Head of Department (CSE) / Associate Professor'));
-      expect(nakib['accessLevel'], equals('Head of Department (Head)'));
-      expect(nakib['email'], isNull);
-      expect(nakib['phone'], equals('01769675560'));
-
-      // 5. Zero mock emails policy across initialFaculty
-      for (final faculty in BaustSeedData.initialFaculty) {
-        final email = faculty['email'];
-        if (email != null) {
-          expect(email.contains('head.'), isFalse);
-          expect(email, isNot(equals('fowzia@baust.edu.bd')));
-          expect(email, isNot(equals('mozaffor@baust.edu.bd')));
-          expect(email, isNot(equals('limu@baust.edu.bd')));
-          expect(email, isNot(equals('nakib@baust.edu.bd')));
-        }
-      }
-    });
   });
 
   group('2. Detailed Medical History & Chronological Clinical Timeline View Tests', () {
@@ -363,7 +322,7 @@ void main() {
 
       final superAdminProfile = UserProfile(
         uid: 'superadmin-sajol',
-        email: 'mdsajolhasan5@gmail.com',
+        email: 'serviceprovidergalib@gmail.com',
         displayName: 'MD. Sajol Hasan',
         role: 'superadmin',
         accessLevel: 'SuperAdmin',
@@ -388,84 +347,16 @@ void main() {
 
       // 1. Verify SuperAdmin Banner & Fixed Email
       expect(find.text('MD. Sajol Hasan'), findsWidgets);
-      expect(find.textContaining('mdsajolhasan5@gmail.com'), findsWidgets);
+      expect(find.textContaining('serviceprovidergalib@gmail.com'), findsWidgets);
       expect(find.textContaining('Absolute SuperAdmin'), findsOneWidget);
 
-      // 2. Verify Demo System Accounts Section labeled clearly as [TEST TOOLS]
-      expect(find.text('DEMO SYSTEM ACCOUNTS [TEST TOOLS]'), findsOneWidget);
-
-      // Verify registered student account: MD. Sajol Hassan (0802420205101137)
-      expect(find.text('MD. Sajol Hassan'), findsWidgets);
-      expect(find.text('Student ID: 0802420205101137'), findsOneWidget);
-      expect(find.text('0802420205101137@baust.edu.bd'), findsOneWidget);
-
-      // Verify clinical staff accounts: Doctor, Pharmacist, Nurse
-      expect(find.text('Dr. Fowzia Jahan'), findsWidgets);
-      expect(find.text('medicalcenter@baust.edu.bd'), findsWidgets);
-      expect(find.text('01769-675576'), findsWidgets);
-      expect(find.text('Md. Mozaffor Hossain'), findsWidgets);
-      expect(find.text('01712-645975'), findsWidgets);
-      expect(find.text('Lamia Aktar Limu'), findsWidgets);
-      expect(find.text('limuakhtar9@gmail.com'), findsWidgets);
-      expect(find.text('01749-898473'), findsWidgets);
-
-      // Verify Test Tool badges on demo accounts
-      expect(find.text('Test Tool'), findsWidgets);
-
-      // Verify removal of mock/guessed emails
-      expect(find.text('fowzia@baust.edu.bd'), findsNothing);
-      expect(find.text('mozaffor@baust.edu.bd'), findsNothing);
-      expect(find.text('limu@baust.edu.bd'), findsNothing);
-      expect(find.text('nakib@baust.edu.bd'), findsNothing);
-
-      // Verify Dr. Md Nakib Hayat Chowdhury is strictly Head of Department, not Hall/Faculty Advisor
-      expect(find.text('Dr. Md Nakib Hayat Chowdhury'), findsWidgets);
-      expect(find.text('Head of Department (CSE)'), findsWidgets);
-      expect(find.textContaining('Hall Advisor'), findsNothing);
-      expect(find.textContaining('Approved Faculty Advisor'), findsNothing);
-
-      // 3. Verify Account Filter Chips
-      expect(find.widgetWithText(FilterChip, 'All Accounts'), findsOneWidget);
-      expect(find.widgetWithText(FilterChip, 'Students'), findsOneWidget);
-      expect(find.widgetWithText(FilterChip, 'Doctors'), findsOneWidget);
-      expect(find.widgetWithText(FilterChip, 'Pharmacists & Nurses'), findsOneWidget);
-      expect(find.widgetWithText(FilterChip, 'SuperAdmin'), findsOneWidget);
-
-      // Filter by "Students"
-      await tester.tap(find.widgetWithText(FilterChip, 'Students'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('MD. Sajol Hassan'), findsWidgets);
-      expect(find.text('Student ID: 0802420205101137'), findsOneWidget);
-
-      // Filter by "SuperAdmin"
-      await tester.tap(find.widgetWithText(FilterChip, 'SuperAdmin'));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('mdsajolhasan5@gmail.com'), findsWidgets);
-      expect(find.text('Student ID: 0802420205101137'), findsNothing);
-
-      // Reset to All Accounts
-      await tester.tap(find.widgetWithText(FilterChip, 'All Accounts'));
-      await tester.pumpAndSettle();
-
-      // 4. Verify Live Emergency SOS Queue & Testing Monitor
-      expect(find.text('LIVE EMERGENCY SOS TESTING MONITOR'), findsOneWidget);
-      expect(find.textContaining('Shaheed Dr. Zikrul Haque Hall (SDZHH) • Room 402-B'), findsWidgets);
-      expect(find.text('DISPATCH AMBULANCE'), findsOneWidget);
-
-      // Dispatch Ambulance
-      await tester.tap(find.text('DISPATCH AMBULANCE'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('AMBULANCE ON ROUTE'), findsOneWidget);
-
-      // Trigger Simulated SOS (labeled as Test Tool)
-      expect(find.text('Simulate SOS (Test Tool)'), findsOneWidget);
-      await tester.tap(find.byTooltip('Simulate Student SOS (Test Tool)'));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('Simulated SOS triggered for Student MD. Sajol Hassan'), findsOneWidget);
+      // 2. No hard-coded people: accounts and SOS alerts come only from Firestore
+      for (final name in ['MD. Sajol Hassan', 'Dr. Fowzia Jahan', 'Md. Mozaffor Hossain', 'Lamia Aktar Limu', 'Dr. Md Nakib Hayat Chowdhury']) {
+        expect(find.text(name), findsNothing);
+      }
+      expect(find.textContaining('0802420205101137'), findsNothing);
+      expect(find.textContaining('limuakhtar9@gmail.com'), findsNothing);
+      expect(find.textContaining('01769-675576'), findsNothing);
     });
   });
 }

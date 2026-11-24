@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../../medical_onboarding_ai/presentation/screens/medical_onboarding_screen.dart';
@@ -26,10 +27,7 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
     Stream<List<PrescriptionModel>>? prescriptionsStream;
 
     try {
-      historyStream = FirebaseFirestore.instance
-          .collection('medical_histories')
-          .doc(user.uid)
-          .snapshots();
+      historyStream = FirebaseFirestore.instance.collection('medical_histories').doc(user.uid).snapshots();
     } catch (_) {
       historyStream = null;
     }
@@ -56,9 +54,7 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
       stream: historyStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: BaustColors.primaryArmyGreen),
-          );
+          return const Center(child: CircularProgressIndicator(color: BaustColors.primaryArmyGreen));
         }
 
         final data = snapshot.data?.data();
@@ -120,12 +116,7 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
                   );
                 },
               ),
-              const Flexible(
-                child: Text(
-                  'AI Medical Summary',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              const Flexible(child: Text('AI Medical Summary', overflow: TextOverflow.ellipsis)),
             ],
           ),
         ),
@@ -177,11 +168,7 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
                     children: [
                       Text(
                         'AI Medical Record',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 2),
                       Text(
@@ -204,231 +191,220 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
           ],
 
           if (data == null || data.isEmpty) ...[
-                // Empty state card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+            // Empty state card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: BaustColors.primaryArmyGreen.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.note_alt_outlined, size: 40, color: BaustColors.primaryArmyGreen),
                   ),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: BaustColors.primaryArmyGreen.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.note_alt_outlined,
-                          size: 40,
-                          color: BaustColors.primaryArmyGreen,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'No Medical Summary Recorded',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BaustColors.textDark),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Upload a doctor prescription, clinical record, or lab report to extract and store your critical medical profile.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
-                      ),
-                      const SizedBox(height: 18),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: BaustColors.primaryNavy,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        icon: const Icon(Icons.history_edu),
-                        label: const Text('View Detailed Medical History'),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const DetailedMedicalHistoryScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: BaustColors.primaryArmyGreen,
-                          side: const BorderSide(color: BaustColors.primaryArmyGreen),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        icon: const Icon(Icons.document_scanner),
-                        label: const Text('Start AI Medical Onboarding'),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const MedicalOnboardingScreen()),
-                          );
-                        },
-                      ),
-                    ],
+                  const SizedBox(height: 14),
+                  const Text(
+                    'No Medical Summary Recorded',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: BaustColors.textDark),
                   ),
-                ),
-              ] else ...[
-                // Clinical Summary Card
-                _buildSectionCard(
-                  title: 'CLINICAL SUMMARY',
-                  icon: Icons.summarize_outlined,
-                  color: BaustColors.primaryArmyGreen,
-                  child: Text(
-                    (data['clinicalSummary'] ?? 'No summary available').toString(),
-                    style: const TextStyle(fontSize: 13, height: 1.4, color: BaustColors.textDark),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Upload a doctor prescription, clinical record, or lab report to extract and store your critical medical profile.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
                   ),
-                ),
+                  const SizedBox(height: 18),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: BaustColors.primaryNavy,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.history_edu),
+                    label: const Text('View Detailed Medical History'),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const DetailedMedicalHistoryScreen()));
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: BaustColors.primaryArmyGreen,
+                      side: const BorderSide(color: BaustColors.primaryArmyGreen),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.document_scanner),
+                    label: const Text('Start AI Medical Onboarding'),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const MedicalOnboardingScreen()));
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Clinical Summary Card
+            _buildSectionCard(
+              title: 'CLINICAL SUMMARY',
+              icon: Icons.summarize_outlined,
+              color: BaustColors.primaryArmyGreen,
+              child: Text(
+                (data['clinicalSummary'] ?? 'No summary available').toString(),
+                style: const TextStyle(fontSize: 13, height: 1.4, color: BaustColors.textDark),
+              ),
+            ),
 
-                const SizedBox(height: 14),
+            const SizedBox(height: 14),
 
-                // Blood Group Source Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+            // Blood Group Source Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Text(
+                      (data['bloodGroup'] ?? 'N/A').toString(),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: BaustColors.emergencyRed,
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Text(
-                          (data['bloodGroup'] ?? 'N/A').toString(),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Source: ${(data['bloodGroupSource'] ?? "Unspecified").toString()}',
                           style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: BaustColors.emergencyRed,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: BaustColors.textDark,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Source: ${(data['bloodGroupSource'] ?? "Unspecified").toString()}',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BaustColors.textDark),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              data['bloodGroupVerified'] == true
-                                  ? 'Verified by Medical Officer'
-                                  : 'Unverified (Clinical AI extraction)',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: data['bloodGroupVerified'] == true ? BaustColors.successGreen : Colors.amber.shade800,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 2),
+                        Text(
+                          data['bloodGroupVerified'] == true
+                              ? 'Verified by Medical Officer'
+                              : 'Unverified (Clinical AI extraction)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: data['bloodGroupVerified'] == true
+                                ? BaustColors.successGreen
+                                : Colors.amber.shade800,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
+              ),
+            ),
 
-                const SizedBox(height: 14),
+            const SizedBox(height: 14),
 
-                // Known Allergies
-                _buildListSection(
-                  title: 'KNOWN ALLERGIES (CRITICAL FLAGS)',
-                  icon: Icons.warning_amber_rounded,
-                  iconColor: BaustColors.emergencyRed,
-                  items: List<String>.from(data['knownAllergies'] ?? []),
-                  emptyText: 'No allergies recorded in document.',
-                ),
+            // Known Allergies
+            _buildListSection(
+              title: 'KNOWN ALLERGIES (CRITICAL FLAGS)',
+              icon: Icons.warning_amber_rounded,
+              iconColor: BaustColors.emergencyRed,
+              items: List<String>.from(data['knownAllergies'] ?? []),
+              emptyText: 'No allergies recorded in document.',
+            ),
 
-                const SizedBox(height: 14),
+            const SizedBox(height: 14),
 
-                // Chronic Conditions
-                _buildListSection(
-                  title: 'CHRONIC CONDITIONS & DIAGNOSES',
-                  icon: Icons.healing_outlined,
-                  iconColor: Colors.blue.shade700,
-                  items: List<String>.from(data['historicalProblems'] ?? []),
-                  emptyText: 'No chronic conditions reported.',
-                ),
+            // Chronic Conditions
+            _buildListSection(
+              title: 'CHRONIC CONDITIONS & DIAGNOSES',
+              icon: Icons.healing_outlined,
+              iconColor: Colors.blue.shade700,
+              items: List<String>.from(data['historicalProblems'] ?? []),
+              emptyText: 'No chronic conditions reported.',
+            ),
 
-                const SizedBox(height: 14),
+            const SizedBox(height: 14),
 
-                // Active Medications
-                _buildListSection(
-                  title: 'CURRENT & ONGOING MEDICATIONS',
-                  icon: Icons.medication_outlined,
-                  iconColor: BaustColors.primaryArmyGreen,
-                  items: List<String>.from(data['activeIssues'] ?? []),
-                  emptyText: 'No active medications found in document.',
-                ),
+            // Active Medications
+            _buildListSection(
+              title: 'CURRENT & ONGOING MEDICATIONS',
+              icon: Icons.medication_outlined,
+              iconColor: BaustColors.primaryArmyGreen,
+              items: List<String>.from(data['activeIssues'] ?? []),
+              emptyText: 'No active medications found in document.',
+            ),
 
-                const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-                // Prominent Detailed Medical History Button (Task 1)
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: BaustColors.primaryNavy,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 52),
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.history_edu, size: 20),
-                  label: const Text(
-                    'View Detailed Medical History',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.6),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DetailedMedicalHistoryScreen(initialData: data),
-                      ),
-                    );
-                  },
-                ),
+            // Prominent Detailed Medical History Button (Task 1)
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BaustColors.primaryNavy,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 52),
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.history_edu, size: 20),
+              label: const Text(
+                'View Detailed Medical History',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.6),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => DetailedMedicalHistoryScreen(initialData: data)),
+                );
+              },
+            ),
 
-                const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-                // Upload New Document Button
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: BaustColors.primaryArmyGreen,
-                    side: const BorderSide(color: BaustColors.primaryArmyGreen),
-                    minimumSize: const Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: const Text(
-                    'UPLOAD NEW MEDICAL DOCUMENT',
-                    style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MedicalOnboardingScreen()),
-                    );
-                  },
-                ),
-              ],
+            // Upload New Document Button
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: BaustColors.primaryArmyGreen,
+                side: const BorderSide(color: BaustColors.primaryArmyGreen),
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.upload_file, size: 18),
+              label: const Text(
+                'UPLOAD NEW MEDICAL DOCUMENT',
+                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              ),
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const MedicalOnboardingScreen()));
+              },
+            ),
+          ],
 
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
   }
 
   Widget _buildSectionCard({
@@ -499,11 +475,7 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
                   ),
                   child: Text(
                     item,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: iconColor,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: iconColor),
                   ),
                 );
               }).toList(),
@@ -511,11 +483,7 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildIssuedPrescriptionsSection(
-    BuildContext context,
-    UserProfile user,
-    List<PrescriptionModel> rxList,
-  ) {
+  Widget _buildIssuedPrescriptionsSection(BuildContext context, UserProfile user, List<PrescriptionModel> rxList) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -543,8 +511,7 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
-          for (final rx in rxList)
-            _buildPrescriptionCard(context, user, rx),
+          for (final rx in rxList) _buildPrescriptionCard(context, user, rx),
         ],
       ),
     );
@@ -595,10 +562,7 @@ class MedicalHistoryTabScreen extends ConsumerWidget {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
                 child: Text(
                   dateStr,
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.textDark),

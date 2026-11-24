@@ -79,24 +79,16 @@ class AuthConfig {
   // ===========================================================================
   /// Academic Levels (Undergraduate Years 1 to 4).
   /// TODO: Confirm if Postgraduate / M.Sc. / Ph.D. levels are needed.
-  static const List<String> academicLevels = [
-    'Level 1',
-    'Level 2',
-    'Level 3',
-    'Level 4',
-  ];
+  static const List<String> academicLevels = ['Level 1', 'Level 2', 'Level 3', 'Level 4'];
 
   /// Academic Terms (Bi-semester system: Term 1 & Term 2).
-  static const List<String> academicTerms = [
-    'Term 1',
-    'Term 2',
-  ];
+  static const List<String> academicTerms = ['Term 1', 'Term 2'];
 
   // ===========================================================================
   // 7. SUPER ADMIN CONFIGURATION
   // ===========================================================================
   /// Fixed Super Administrator email with absolute system management privileges.
-  static const String superAdminEmail = 'mdsajolhasan5@gmail.com';
+  static const String superAdminEmail = 'serviceprovidergalib@gmail.com';
 
   /// Returns true if the email belongs to the fixed Super Administrator.
   static bool isSuperAdminEmail(String email) {

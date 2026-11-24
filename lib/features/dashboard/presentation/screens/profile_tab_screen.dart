@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../../admin_portal/presentation/screens/superadmin_dashboard.dart';
 import '../../../advisor_portal/presentation/screens/staff_dashboard_screen.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
+import '../../../profile/presentation/screens/edit_profile_screen.dart';
 import '../../../medical_operations/presentation/screens/doctor_dashboard_screen.dart';
 import '../../../medical_operations/presentation/screens/pharmacist_inventory_screen.dart';
 
@@ -28,8 +30,8 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
     String selectedHall = BaustHalls.residentialHalls.contains(user.residentialHall)
         ? user.residentialHall!
         : (BaustHalls.residentialHalls.contains(user.effectiveResidentialHall)
-            ? user.effectiveResidentialHall
-            : BaustHalls.residentialHalls.first);
+              ? user.effectiveResidentialHall
+              : BaustHalls.residentialHalls.first);
     bool isWillingToDonate = user.isWillingToDonateBlood;
     bool isSaving = false;
 
@@ -37,17 +39,10 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
+          padding: EdgeInsets.only(left: 24, right: 24, top: 24, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
           child: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -64,18 +59,11 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                           SizedBox(width: 8),
                           Text(
                             'Edit Location Profile',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: BaustColors.textDark,
-                            ),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: BaustColors.textDark),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
                     ],
                   ),
                   const Text(
@@ -112,9 +100,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                                   residencyStatus == 'residential'
                                       ? Icons.radio_button_checked
                                       : Icons.radio_button_unchecked,
-                                  color: residencyStatus == 'residential'
-                                      ? BaustColors.primaryArmyGreen
-                                      : Colors.grey,
+                                  color: residencyStatus == 'residential' ? BaustColors.primaryArmyGreen : Colors.grey,
                                   size: 16,
                                 ),
                                 const SizedBox(width: 6),
@@ -286,8 +272,14 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: BaustColors.primaryArmyGreen,
-                    title: const Text('Volunteer as Campus Blood Donor', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                    subtitle: const Text('List availability in the university blood bank directory', style: TextStyle(fontSize: 11, color: BaustColors.textMuted)),
+                    title: const Text(
+                      'Volunteer as Campus Blood Donor',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: const Text(
+                      'List availability in the university blood bank directory',
+                      style: TextStyle(fontSize: 11, color: BaustColors.textMuted),
+                    ),
                     value: isWillingToDonate,
                     onChanged: (val) {
                       setModalState(() => isWillingToDonate = val);
@@ -320,14 +312,24 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                             if (formKey.currentState?.validate() ?? false) {
                               setModalState(() => isSaving = true);
                               try {
-                                await ref.read(authControllerProvider.notifier).updateUserProfileDetails(
+                                await ref
+                                    .read(authControllerProvider.notifier)
+                                    .updateUserProfileDetails(
                                       residencyStatus: residencyStatus,
-                                      residentialHall: residencyStatus == 'residential' ? selectedHall : 'Non-Residential (Day Scholar)',
+                                      residentialHall: residencyStatus == 'residential'
+                                          ? selectedHall
+                                          : 'Non-Residential (Day Scholar)',
                                       roomNumber: residencyStatus == 'residential' ? roomController.text.trim() : 'N/A',
                                       district: residencyStatus == 'non_residential' ? selectedDistrict : null,
-                                      upazila: residencyStatus == 'non_residential' ? upazilaController.text.trim() : null,
-                                      detailedAddress: residencyStatus == 'non_residential' ? detailedAddressController.text.trim() : null,
-                                      phone: phoneController.text.trim().isNotEmpty ? phoneController.text.trim() : null,
+                                      upazila: residencyStatus == 'non_residential'
+                                          ? upazilaController.text.trim()
+                                          : null,
+                                      detailedAddress: residencyStatus == 'non_residential'
+                                          ? detailedAddressController.text.trim()
+                                          : null,
+                                      phone: phoneController.text.trim().isNotEmpty
+                                          ? phoneController.text.trim()
+                                          : null,
                                       isWillingToDonateBlood: isWillingToDonate,
                                     );
                                 if (ctx.mounted) {
@@ -427,11 +429,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                           Expanded(
                             child: Text(
                               user.displayName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -472,10 +470,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        user.email,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
+                      Text(user.email, style: const TextStyle(color: Colors.white70, fontSize: 13)),
                       if (user.studentRoll != null && user.studentRoll!.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
@@ -487,6 +482,18 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Full manual profile editor (role-aware)
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())),
+              icon: const Icon(Icons.manage_accounts_rounded),
+              label: const Text('Edit Profile'),
             ),
           ),
 
@@ -511,9 +518,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                         const Icon(Icons.location_on, color: BaustColors.emergencyRed, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          user.isResidential
-                              ? 'RESIDENTIAL EMERGENCY LOCATION'
-                              : 'NON-RESIDENTIAL EMERGENCY ADDRESS',
+                          user.isResidential ? 'RESIDENTIAL EMERGENCY LOCATION' : 'NON-RESIDENTIAL EMERGENCY ADDRESS',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -624,10 +629,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                               color: BaustColors.emergencyRed,
                             ),
                           ),
-                          const Text(
-                            'Blood Group',
-                            style: TextStyle(fontSize: 10, color: BaustColors.textMuted),
-                          ),
+                          const Text('Blood Group', style: TextStyle(fontSize: 10, color: BaustColors.textMuted)),
                         ],
                       ),
                     ),
@@ -723,13 +725,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                 color: const Color(0xFF0F172A),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
-                  ),
-                ],
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3))],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -760,40 +756,32 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                     icon: Icons.admin_panel_settings,
                     title: 'System Hierarchy & Faculty RBAC',
                     subtitle: 'Provision personnel, view metrics & assignments',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SuperAdminDashboard()),
-                    ),
+                    onTap: () =>
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SuperAdminDashboard())),
                   ),
                   const SizedBox(height: 8),
                   _buildAdminTile(
                     icon: Icons.local_hospital,
                     title: 'Doctor Dashboard & Emergency SOS Logs',
                     subtitle: 'Real-time university medical center dispatch queue',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
-                    ),
+                    onTap: () =>
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorDashboardScreen())),
                   ),
                   const SizedBox(height: 8),
                   _buildAdminTile(
                     icon: Icons.medication,
                     title: 'Pharmacy & Drug Inventory',
                     subtitle: 'Medical dispensary stock and drug issue logs',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                    ),
+                    onTap: () =>
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen())),
                   ),
                   const SizedBox(height: 8),
                   _buildAdminTile(
                     icon: Icons.person_pin_outlined,
                     title: 'Academic Advisor / Staff Portal',
                     subtitle: 'Department guides and faculty counseling desk',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const StaffDashboardScreen()),
-                    ),
+                    onTap: () =>
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffDashboardScreen())),
                   ),
                 ],
               ),
@@ -858,7 +846,10 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
         const SizedBox(width: 10),
         Text(label, style: const TextStyle(color: BaustColors.textMuted, fontSize: 13)),
         const Spacer(),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: BaustColors.textDark)),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: BaustColors.textDark),
+        ),
       ],
     );
   }
@@ -898,10 +889,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
                     title,
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: Colors.white60, fontSize: 11),
-                  ),
+                  Text(subtitle, style: const TextStyle(color: Colors.white60, fontSize: 11)),
                 ],
               ),
             ),

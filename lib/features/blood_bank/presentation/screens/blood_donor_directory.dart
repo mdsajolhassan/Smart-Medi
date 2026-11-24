@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 
 /// Minimal public donor profile representation in the campus blood bank directory (H2)
@@ -52,32 +53,17 @@ class BloodDonorRecord {
 class BloodDonorDirectoryScreen extends ConsumerStatefulWidget {
   final bool showAppBar;
 
-  const BloodDonorDirectoryScreen({
-    super.key,
-    this.showAppBar = true,
-  });
+  const BloodDonorDirectoryScreen({super.key, this.showAppBar = true});
 
   @override
-  ConsumerState<BloodDonorDirectoryScreen> createState() =>
-      _BloodDonorDirectoryScreenState();
+  ConsumerState<BloodDonorDirectoryScreen> createState() => _BloodDonorDirectoryScreenState();
 }
 
-class _BloodDonorDirectoryScreenState
-    extends ConsumerState<BloodDonorDirectoryScreen> {
+class _BloodDonorDirectoryScreenState extends ConsumerState<BloodDonorDirectoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedBloodGroup = 'All';
 
-  final List<String> _bloodGroups = [
-    'All',
-    'A+',
-    'A-',
-    'B+',
-    'B-',
-    'AB+',
-    'AB-',
-    'O+',
-    'O-',
-  ];
+  final List<String> _bloodGroups = ['All', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   @override
   void dispose() {
@@ -95,10 +81,7 @@ class _BloodDonorDirectoryScreenState
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
               child: const Icon(Icons.phone, color: BaustColors.emergencyRed),
             ),
             const SizedBox(width: 10),
@@ -109,10 +92,7 @@ class _BloodDonorDirectoryScreenState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              donor.displayName,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
+            Text(donor.displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             Text(
               '${donor.department} • ${donor.hall}',
               style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
@@ -121,10 +101,7 @@ class _BloodDonorDirectoryScreenState
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
               child: Row(
                 children: [
                   Icon(
@@ -149,10 +126,7 @@ class _BloodDonorDirectoryScreenState
             const SizedBox(height: 10),
             Text(
               'Donor Blood Group: ${donor.bloodGroup}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: BaustColors.emergencyRed,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: BaustColors.emergencyRed),
             ),
             if (!hasPhone) ...[
               const SizedBox(height: 8),
@@ -164,10 +138,7 @@ class _BloodDonorDirectoryScreenState
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: BaustColors.primaryArmyGreen,
@@ -211,23 +182,15 @@ class _BloodDonorDirectoryScreenState
           style: const TextStyle(fontSize: 13),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: BaustColors.emergencyRed,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: BaustColors.emergencyRed, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   backgroundColor: BaustColors.successGreen,
-                  content: Text(
-                    'Emergency blood request dispatched to ${donor.displayName} (${donor.bloodGroup})!',
-                  ),
+                  content: Text('Emergency blood request dispatched to ${donor.displayName} (${donor.bloodGroup})!'),
                 ),
               );
             },
@@ -252,11 +215,7 @@ class _BloodDonorDirectoryScreenState
 
     return Scaffold(
       backgroundColor: BaustColors.surfaceBg,
-      appBar: widget.showAppBar
-          ? AppBar(
-              title: const Text('Blood Donor Directory — BAUST'),
-            )
-          : null,
+      appBar: widget.showAppBar ? AppBar(title: const Text('Blood Donor Directory — BAUST')) : null,
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: donorStream,
         builder: (context, snapshot) {
@@ -271,10 +230,11 @@ class _BloodDonorDirectoryScreenState
           // Search and filter
           final query = _searchController.text.trim().toLowerCase();
           final displayedDonors = allDonors.where((donor) {
-            final matchesGroup = _selectedBloodGroup == 'All' ||
-                donor.bloodGroup.toUpperCase() == _selectedBloodGroup.toUpperCase();
+            final matchesGroup =
+                _selectedBloodGroup == 'All' || donor.bloodGroup.toUpperCase() == _selectedBloodGroup.toUpperCase();
 
-            final matchesQuery = query.isEmpty ||
+            final matchesQuery =
+                query.isEmpty ||
                 donor.displayName.toLowerCase().contains(query) ||
                 donor.hall.toLowerCase().contains(query) ||
                 donor.department.toLowerCase().contains(query);
@@ -301,11 +261,7 @@ class _BloodDonorDirectoryScreenState
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(
-                            Icons.volunteer_activism,
-                            color: Colors.white,
-                            size: 22,
-                          ),
+                          child: const Icon(Icons.volunteer_activism, color: Colors.white, size: 22),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
@@ -314,18 +270,11 @@ class _BloodDonorDirectoryScreenState
                             children: [
                               Text(
                                 'Blood Donor Directory',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               Text(
                                 'Self-reported blood groups - confirm before transfusion',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
+                                style: TextStyle(color: Colors.white70, fontSize: 12),
                               ),
                             ],
                           ),
@@ -342,11 +291,7 @@ class _BloodDonorDirectoryScreenState
                               const SizedBox(width: 4),
                               Text(
                                 '${allDonors.length} Active',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                ),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
                               ),
                             ],
                           ),
@@ -357,10 +302,7 @@ class _BloodDonorDirectoryScreenState
 
                     // Search input
                     Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                       child: TextField(
                         controller: _searchController,
                         onChanged: (_) => setState(() {}),
@@ -446,11 +388,7 @@ class _BloodDonorDirectoryScreenState
                     Expanded(
                       child: Text(
                         'Minimal registry ($rareCount rare Rh-negative). Medical records private.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
                       ),
                     ),
                     Text(
@@ -474,11 +412,7 @@ class _BloodDonorDirectoryScreenState
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.bloodtype_outlined,
-                                size: 64,
-                                color: Colors.grey.shade400,
-                              ),
+                              Icon(Icons.bloodtype_outlined, size: 64, color: Colors.grey.shade400),
                               const SizedBox(height: 12),
                               Text(
                                 allDonors.isEmpty
@@ -572,8 +506,7 @@ class _BloodDonorDirectoryScreenState
                                                   ),
                                                 ),
                                                 Container(
-                                                  padding: const EdgeInsets.symmetric(
-                                                      horizontal: 6, vertical: 2),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                   decoration: BoxDecoration(
                                                     color: Colors.amber.shade50,
                                                     borderRadius: BorderRadius.circular(4),
@@ -591,8 +524,7 @@ class _BloodDonorDirectoryScreenState
                                                 if (isRare) ...[
                                                   const SizedBox(width: 4),
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(
-                                                        horizontal: 6, vertical: 2),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                     decoration: BoxDecoration(
                                                       color: Colors.red.shade50,
                                                       borderRadius: BorderRadius.circular(4),
@@ -613,10 +545,7 @@ class _BloodDonorDirectoryScreenState
                                             const SizedBox(height: 2),
                                             Text(
                                               donor.department,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: BaustColors.textMuted,
-                                              ),
+                                              style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
                                             ),
                                             const SizedBox(height: 2),
                                             Row(
@@ -679,11 +608,15 @@ class _BloodDonorDirectoryScreenState
                                           side: BorderSide(
                                             color: hasPhone ? BaustColors.primaryArmyGreen : Colors.grey.shade400,
                                           ),
-                                          foregroundColor:
-                                              hasPhone ? BaustColors.primaryArmyGreen : Colors.grey.shade700,
+                                          foregroundColor: hasPhone
+                                              ? BaustColors.primaryArmyGreen
+                                              : Colors.grey.shade700,
                                         ),
                                         icon: Icon(hasPhone ? Icons.call : Icons.info_outline, size: 14),
-                                        label: Text(hasPhone ? 'Contact' : 'Details', style: const TextStyle(fontSize: 12)),
+                                        label: Text(
+                                          hasPhone ? 'Contact' : 'Details',
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
                                         onPressed: () => _callDonor(donor),
                                       ),
                                       const SizedBox(width: 8),

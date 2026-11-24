@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../controllers/auth_controller.dart';
 
@@ -7,12 +8,10 @@ class WaitingForApprovalScreen extends ConsumerStatefulWidget {
   const WaitingForApprovalScreen({super.key});
 
   @override
-  ConsumerState<WaitingForApprovalScreen> createState() =>
-      _WaitingForApprovalScreenState();
+  ConsumerState<WaitingForApprovalScreen> createState() => _WaitingForApprovalScreenState();
 }
 
-class _WaitingForApprovalScreenState
-    extends ConsumerState<WaitingForApprovalScreen> {
+class _WaitingForApprovalScreenState extends ConsumerState<WaitingForApprovalScreen> {
   bool _isChecking = false;
 
   Future<void> _checkApprovalStatus() async {
@@ -45,8 +44,7 @@ class _WaitingForApprovalScreenState
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign Out',
-            onPressed: () =>
-                ref.read(authControllerProvider.notifier).signOut(),
+            onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
           ),
         ],
       ),
@@ -58,9 +56,7 @@ class _WaitingForApprovalScreenState
               constraints: const BoxConstraints(maxWidth: 500),
               child: Card(
                 elevation: 3,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 child: Padding(
                   padding: const EdgeInsets.all(28),
                   child: Column(
@@ -86,11 +82,7 @@ class _WaitingForApprovalScreenState
                       const SizedBox(height: 2),
                       const Text(
                         'BAUST Medical Center',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: BaustColors.navyLight,
-                        ),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: BaustColors.navyLight),
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -105,11 +97,7 @@ class _WaitingForApprovalScreenState
                       Text(
                         'Account: ${user?.email ?? "User"}\nStatus: ${isRejected ? "Account Rejected" : "Verification Pending"}',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: BaustColors.textMuted,
-                        ),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: BaustColors.textMuted),
                       ),
                       const SizedBox(height: 16),
                       Container(
@@ -123,7 +111,7 @@ class _WaitingForApprovalScreenState
                           isRejected
                               ? 'Your account was not approved. Please contact the BAUST Medical Center.'
                               : 'Your account is awaiting approval by the administrator.\n\n'
-                                  'While pending, access to clinical medical histories, the blood donor directory, and campus SOS emergency services is restricted.',
+                                    'While pending, access to clinical medical histories, the blood donor directory, and campus SOS emergency services is restricted.',
                           style: const TextStyle(fontSize: 13, height: 1.45),
                           textAlign: TextAlign.center,
                         ),
@@ -137,18 +125,13 @@ class _WaitingForApprovalScreenState
                             style: ElevatedButton.styleFrom(
                               backgroundColor: BaustColors.primaryNavy,
                               foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             icon: _isChecking
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   )
                                 : const Icon(Icons.refresh, size: 20),
                             label: Text(
@@ -163,11 +146,8 @@ class _WaitingForApprovalScreenState
                       TextButton.icon(
                         icon: const Icon(Icons.logout, size: 18),
                         label: const Text('Sign Out'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: BaustColors.emergencyRed,
-                        ),
-                        onPressed: () =>
-                            ref.read(authControllerProvider.notifier).signOut(),
+                        style: TextButton.styleFrom(foregroundColor: BaustColors.emergencyRed),
+                        onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
                       ),
                     ],
                   ),

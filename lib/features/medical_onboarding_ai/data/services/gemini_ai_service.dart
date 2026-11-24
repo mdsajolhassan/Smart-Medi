@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import 'alternative_vision_ai_service.dart';
+
 class GeminiApiException implements Exception {
   final int? statusCode;
   final String userMessage;
@@ -59,6 +61,7 @@ class MedicationItem {
   final String frequency;
   final String? prescribedDate;
   final String? durationText;
+  final String? instructions;
   final String status;
   final bool isDischargeFallback;
 
@@ -68,6 +71,7 @@ class MedicationItem {
     required this.frequency,
     this.prescribedDate,
     this.durationText,
+    this.instructions,
     this.status = 'Prescribed date not stated',
     this.isDischargeFallback = false,
   });
@@ -108,6 +112,7 @@ class MedicationItem {
       frequency: frequency ?? '',
       prescribedDate: effectiveDate,
       durationText: durationText,
+      instructions: _nonEmpty(map['instructions']),
       status: status,
       isDischargeFallback: useDischarge,
     );
@@ -119,9 +124,15 @@ class MedicationItem {
     'frequency': frequency,
     if (prescribedDate != null) 'prescribed_date': prescribedDate,
     if (durationText != null) 'duration_text': durationText,
+    if (instructions != null) 'instructions': instructions,
     'status': status,
     'is_discharge_fallback': isDischargeFallback,
   };
+
+  static String? _nonEmpty(dynamic v) {
+    final s = v?.toString().trim();
+    return (s == null || s.isEmpty || s.toLowerCase() == 'null') ? null : s;
+  }
 
   String? get prescribedDisplay {
     if (prescribedDate == null || prescribedDate!.trim().isEmpty) return null;
@@ -623,7 +634,12 @@ String get geminiApiKey =>
 class GeminiAiService {
   final http.Client? httpClient;
 
-  GeminiAiService({this.httpClient});
+  /// Optional alternative (OpenAI-compatible) vision provider. When null it is
+  /// built from `.env` (ALT_AI_API_KEY / OPENROUTER_API_KEY), unless an
+  /// [httpClient] was injected (tests), in which case only Gemini is used.
+  final AlternativeVisionAiService? alternativeService;
+
+  GeminiAiService({this.httpClient, this.alternativeService});
 
   /// Default fallback API keys loaded from environment variables using flutter_dotenv
   static List<String> get _defaultFallbackKeys {
@@ -1267,6 +1283,8 @@ HANDWRITING & UNCLEAR TEXT INTELLIGENCE:
    - Cross-check abbreviations and numbers with common pharmacological and clinical standards.
    - If any doctor's handwritten drug name, dosage number, frequency, or instruction is ambiguous, smudged, illegible, or uncertain, do NOT guess or hallucinate.
    - Label ambiguous values safely with "Unverified - confirm with doctor" (for example: dose: "Unverified - confirm with doctor", or drug name: "Tab. Metformin [Unverified - confirm with doctor]").
+   - Bangladeshi prescription conventions: "Rx" marks the medicine list; prefixes "Tab.", "Cap.", "Syp.", "Inj.", "Susp.", "Drop" are dosage forms; frequency is commonly written as "1+0+1", "1+1+1", "0+0+1" (morning+noon+night) or "১+০+১"; "BD"=twice daily, "TDS"=three times daily, "OD"=once daily, "HS"=at bedtime, "AC"=before meals, "PC"=after meals; "খাবারের পরে"=after meals, "খাবারের আগে"=before meals. Keep frequency in the written form (e.g. "1+0+1").
+   - Many Bangladeshi brand names (Napa, Ace, Seclo, Maxpro, Fexo, Monas, Alatrol, Azithrocin, Losectil, Sergel...) are valid; read them as written, do not substitute generics.
 
 BLOOD GROUP RULES:
 10. "blood_group" must be strictly one of: "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", or null. Normalize forms like "B positive", "B ve", Bangla spellings. If it is ambiguous, return null.
@@ -1284,7 +1302,8 @@ MEDICATION TIMING RULES:
     "dose": dosage as written,
     "frequency": frequency as written,
     "prescribed_date": start or prescribed date if written, else null,
-    "duration_text": exact duration string written (e.g. "5 days", "14 days", "1 month", "2 weeks", "২ সপ্তাহ", "চলবে", "as needed", or null).
+    "duration_text": exact duration string written (e.g. "5 days", "14 days", "1 month", "2 weeks", "২ সপ্তাহ", "চলবে", "as needed", or null),
+    "instructions": per-medicine instruction as written (e.g. "after meals", "খাবারের পরে", "with water"), or null.
     Do NOT compute or infer end dates in Gemini; return the exact duration_text and prescribed_date as written.
 
 CONDITION DEDUPLICATION RULES:
@@ -1300,7 +1319,7 @@ FOLLOW-UP APPOINTMENT RULES:
     If no follow-up is written in the document, return an empty array [].
 
 PATIENT NAME RULES:
-20. If a patient's name is explicitly written or printed on the document (e.g. "Name: Tanvir Rahman", "Pt: Sajol Hassan"), extract it into "patient_name". If missing or unstated, return null.
+20. If a patient's name is explicitly written or printed on the document (e.g. "Name: Rahim Uddin", "Pt: Karim Ahmed"), extract it into "patient_name". If missing or unstated, return null.
 
 Return ONLY a valid JSON object without markdown formatting.
 
@@ -1320,7 +1339,7 @@ Required JSON Schema:
   "procedures": [{"name": "String", "date": "String or null"}],
   "diagnoses": [{"name": "String", "date": "String or null"}],
   "hospital_admissions": [{"admit_date": "String or null", "discharge_date": "String or null", "reason": "String or null"}],
-  "current_medications": [{"name": "String", "dose": "String", "frequency": "String", "prescribed_date": "String or null", "duration_text": "String or null"}],
+  "current_medications": [{"name": "String", "dose": "String", "frequency": "String", "prescribed_date": "String or null", "duration_text": "String or null", "instructions": "String or null"}],
   "abnormal_labs": ["String"],
   "past_visits": [{"date": "String", "diagnosis": "String"}],
   "follow_ups": [{"date": "String or null", "place": "String or null", "purpose": "String or null"}],
@@ -1349,21 +1368,102 @@ Required JSON Schema:
     }
   }
 
-  /// Real multimodal Gemini API network call
+  /// Name of the provider that produced the most recent successful extraction
+  /// ("Gemini" or "Alternative AI"), for display in the UI.
+  static String? lastProviderUsed;
+
+  /// When true, the alternative provider (if configured) is tried before Gemini.
+  /// Set `AI_PRIMARY_PROVIDER=gemini` in .env to keep Gemini first.
+  static bool get preferAlternative {
+    try {
+      if (dotenv.isInitialized) {
+        return (dotenv.maybeGet('AI_PRIMARY_PROVIDER') ?? 'alternative').trim().toLowerCase() != 'gemini';
+      }
+    } catch (_) {}
+    return true;
+  }
+
+  AlternativeVisionAiService? get _alternative =>
+      alternativeService ?? (httpClient == null ? AlternativeVisionAiService.fromEnvironment() : null);
+
+  /// Multimodal extraction: tries the alternative vision API and Gemini (order
+  /// configurable), falling back to the other one if the first fails.
   Future<Map<String, dynamic>> extractMedicalJson({
     required String fileName,
     required int fileSizeBytes,
     Uint8List? fileBytes,
+    String? prompt,
   }) async {
-    // Check client-side rate limit before proceeding
-    checkRateLimit();
-
+    final activePrompt = prompt ?? systemPrompt;
     if (fileBytes == null || fileBytes.isEmpty) {
       throw GeminiApiException(
         userMessage: 'Selected file "$fileName" has empty or unreadable byte content.',
       );
     }
 
+    // Check client-side rate limit before proceeding
+    checkRateLimit();
+
+    final alt = _alternative;
+    final hasGemini = geminiApiKeys.isNotEmpty;
+
+    Future<Map<String, dynamic>> runAlt() async {
+      final result = await alt!.extractJson(
+        prompt: activePrompt,
+        fileBytes: fileBytes,
+        mimeType: lookupMimeType(fileName),
+        fileName: fileName,
+      );
+      lastProviderUsed = 'Alternative AI';
+      return result;
+    }
+
+    Future<Map<String, dynamic>> runGemini() async {
+      final result = await _extractWithGemini(
+        fileName: fileName,
+        fileSizeBytes: fileSizeBytes,
+        fileBytes: fileBytes,
+        prompt: activePrompt,
+      );
+      lastProviderUsed = 'Gemini';
+      return result;
+    }
+
+    if (alt == null) return runGemini();
+
+    final altFirst = preferAlternative || !hasGemini;
+    try {
+      return altFirst ? await runAlt() : await runGemini();
+    } catch (e) {
+      debugPrint('[AI] Primary provider (${altFirst ? "alternative" : "gemini"}) failed: $e. Trying fallback...');
+      if (altFirst && !hasGemini) {
+        throw GeminiApiException(
+          statusCode: 503,
+          userMessage: allFailFriendlyMessage,
+          technicalDetails: kDebugMode ? '$e' : null,
+        );
+      }
+      try {
+        return altFirst ? await runGemini() : await runAlt();
+      } on GeminiApiException {
+        rethrow;
+      } catch (e2) {
+        throw GeminiApiException(
+          statusCode: 503,
+          userMessage: allFailFriendlyMessage,
+          technicalDetails: kDebugMode ? '$e2' : null,
+        );
+      }
+    }
+  }
+
+  /// Real multimodal Gemini API network call (key rotation + model fallback chain)
+  Future<Map<String, dynamic>> _extractWithGemini({
+    required String fileName,
+    required int fileSizeBytes,
+    required Uint8List fileBytes,
+    String prompt = systemPrompt,
+  }) async {
     final String mimeType = lookupMimeType(fileName);
     final String base64Data = base64Encode(fileBytes);
 
@@ -1376,7 +1476,7 @@ Required JSON Schema:
       'contents': [
         {
           'parts': [
-            {'text': systemPrompt},
+            {'text': prompt},
             {
               'inlineData': {
                 'mimeType': mimeType,
@@ -1636,11 +1736,84 @@ Required JSON Schema:
     try {
       return jsonDecode(cleanJson) as Map<String, dynamic>;
     } catch (e) {
+      // Models sometimes wrap JSON in prose; salvage the first JSON object.
+      final salvaged = AlternativeVisionAiService.extractJsonObject(cleanJson);
+      if (salvaged != null) return salvaged;
       throw GeminiApiException(
         userMessage: 'The AI service output could not be formatted. Please try again.',
         technicalDetails: kDebugMode ? 'Failed to parse JSON: $e\nRaw: $cleanJson' : null,
       );
     }
+  }
+
+  static const String studentIdCardPrompt = '''
+You verify university student ID cards for Bangladesh Army University of Science and Technology (BAUST), Saidpur.
+Look at the photo and return ONLY a JSON object:
+{
+  "is_student_id_card": true/false,      // a physical/photographed student identity card
+  "institution": "String or null",        // institution name printed on the card
+  "is_baust": true/false,                 // card is issued by BAUST
+  "student_name": "String or null",       // exactly as printed
+  "student_id": "String or null",         // ID / roll number exactly as printed (digits only if possible)
+  "department": "String or null",
+  "has_photo": true/false,                // card shows the holder's face photo
+  "expiry_or_session": "String or null",
+  "image_quality": "clear | blurry | partial | unreadable",
+  "notes": "Short note on anything suspicious (edited text, screen photo, mismatch) or null"
+}
+Never guess unreadable text; use null.
+''';
+
+  /// Reads a student ID card photo. Returns the raw JSON from the vision model.
+  Future<Map<String, dynamic>> analyzeStudentIdCard({
+    required String fileName,
+    required Uint8List fileBytes,
+  }) {
+    return extractMedicalJson(
+      fileName: fileName,
+      fileSizeBytes: fileBytes.length,
+      fileBytes: fileBytes,
+      prompt: studentIdCardPrompt,
+    );
+  }
+
+  /// Compares the AI-read card against the profile. Advisory only; an admin makes the final call.
+  static Map<String, dynamic> compareIdCardWithProfile(
+    Map<String, dynamic> card, {
+    required String profileName,
+    required String? profileStudentId,
+  }) {
+    String digits(String? v) => (v ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    String norm(String? v) => (v ?? '')
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z\s]'), ' ')
+        .replaceAll(RegExp(r'\b(md|mst|mohammad|mohammed|muhammad)\b'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((t) => t.length > 1)
+        .join(' ');
+
+    final cardId = digits(card['student_id']?.toString());
+    final profileId = digits(profileStudentId);
+    final idMatch = cardId.isNotEmpty && profileId.isNotEmpty && (cardId == profileId || cardId.endsWith(profileId) || profileId.endsWith(cardId));
+
+    final a = norm(card['student_name']?.toString()).split(' ').where((t) => t.isNotEmpty).toSet();
+    final b = norm(profileName).split(' ').where((t) => t.isNotEmpty).toSet();
+    final nameMatch = a.isNotEmpty && b.isNotEmpty && a.intersection(b).length >= (b.length >= 2 ? 2 : 1);
+
+    final isCard = card['is_student_id_card'] == true;
+    final isBaust = card['is_baust'] == true;
+    return {
+      'isIdCard': isCard,
+      'isBaust': isBaust,
+      'idMatch': idMatch,
+      'nameMatch': nameMatch,
+      'cardName': card['student_name'],
+      'cardStudentId': card['student_id'],
+      'cardDepartment': card['department'],
+      'imageQuality': card['image_quality'],
+      'notes': card['notes'],
+      'looksValid': isCard && isBaust && idMatch && nameMatch,
+    };
   }
 
   /// Multimodal Gemini clinical parsing returning typed ExtractedMedicalData

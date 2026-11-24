@@ -62,7 +62,7 @@ flowchart TD
         D[Dr. Fowzia Jahan<br/>Senior Medical Officer]
         P[Md. Mozaffor Hossain & Lamia Aktar<br/>Dispensary / Staff Nurse]
         F[Dr. Md Nakib Hayat Chowdhury<br/>Faculty / CSE Dept Head]
-        SA[Super Administrator<br/>mdsajolhasan5@gmail.com]
+        SA[Super Administrator<br/>serviceprovidergalib@gmail.com]
     end
 
     subgraph CoreEngine [Smart Medi Flutter Application]
@@ -148,7 +148,7 @@ graph TD
 
 | Role | Target Users | Key Privileges | Firestore Guard |
 | :--- | :--- | :--- | :--- |
-| **Super Admin** | `mdsajolhasan5@gmail.com` | Global read/write bypass across all collections, account verification overrides, role elevation, system audits. | `isSuperAdmin()` via verified Google OAuth |
+| **Super Admin** | `serviceprovidergalib@gmail.com` | Bootstrap super admin (Google sign-in). 4-role model: see docs/CHANGE_REPORT.md. account verification overrides, role elevation, system audits. | `isSuperAdmin()` via verified Google OAuth |
 | **Doctor** | Dr. Fowzia Jahan (Senior Medical Officer) | View student medical histories (generates `access_logs`), acknowledge SOS alerts, issue immutable digital prescriptions, manage patient queue. | `isDoctor()` (`approved == true`, `role == 'doctor'`) |
 | **Pharmacist / Nurse** | Md. Mozaffor Hossain (Medical Assistant), Lamia Aktar Limu (Staff Nurse) | Dispensary stock management with multiplier adjustments, stock logs, batch tracking, patient check-in recording. | `isPharmacist()` / `isMedicalStaff()` |
 | **Student** | BAUST Enrolled Students | Trigger SOS beacon, manage personal health records, opt into blood donor registry, view issued digital prescriptions. | `isOwner(uid)` & `isMember()` |
@@ -421,7 +421,7 @@ The production Firestore security ruleset ([`firestore.rules`](firestore.rules))
      return request.auth != null
        && request.auth.token.email_verified == true
        && request.auth.token.firebase.sign_in_provider == 'google.com'
-       && request.auth.token.email == 'mdsajolhasan5@gmail.com';
+       && request.auth.token.email == 'serviceprovidergalib@gmail.com';
    }
    ```
 2. **Domain Regex Matcher:**

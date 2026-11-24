@@ -1,11 +1,15 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+
 import '../../../../core/constants/baust_constants.dart';
+import '../../../../core/widgets/document_scan_widgets.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../data/services/gemini_ai_service.dart';
+import '../../../../core/widgets/responsive.dart';
 
 enum OnboardingStep { selectDocument, analyzing, reviewSummary, completing }
 
@@ -13,11 +17,7 @@ class MedicalOnboardingScreen extends ConsumerStatefulWidget {
   final OnboardingStep? initialStep;
   final ExtractedMedicalData? initialData;
 
-  const MedicalOnboardingScreen({
-    super.key,
-    this.initialStep,
-    this.initialData,
-  });
+  const MedicalOnboardingScreen({super.key, this.initialStep, this.initialData});
 
   @override
   ConsumerState<MedicalOnboardingScreen> createState() => _MedicalOnboardingScreenState();
@@ -28,7 +28,6 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
 
   late OnboardingStep _currentStep;
   PlatformFile? _selectedFile;
-  int _analysisStage = 0;
   bool _confirmEmptyRecord = false;
   Timer? _cooldownTimer;
   int _retryCooldownSeconds = 0;
@@ -86,22 +85,15 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
       _extractedData = null;
       _currentStep = OnboardingStep.selectDocument;
       _confirmEmptyRecord = false;
-      _analysisStage = 0;
     });
   }
 
   Future<void> _pickDocument() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-        withData: true, // Crucial for web to get file bytes
-      );
+      final picked = await pickMedicalDocument(context, title: 'Add a medical document');
 
-      if (result != null && result.files.isNotEmpty) {
-        final picked = result.files.first;
-        const maxBytes = 5 * 1024 * 1024; // 5 MB
-        if (picked.size > maxBytes) {
+      if (picked != null) {
+        if (picked.size > kMaxScanBytes) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -118,12 +110,8 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: BaustColors.emergencyRed,
-          content: Text('Error selecting file: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(backgroundColor: BaustColors.emergencyRed, content: Text('Error selecting file: $e')));
     }
   }
 
@@ -162,17 +150,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
 
     setState(() {
       _currentStep = OnboardingStep.analyzing;
-      _analysisStage = 1;
     });
-
-    // Simulate multi-stage visual progression
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    setState(() => _analysisStage = 2);
-
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() => _analysisStage = 3);
 
     try {
       final result = await _aiService.analyzeMedicalDocument(
@@ -201,9 +179,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
             children: [
               const Icon(Icons.error_outline, color: Colors.white),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(friendlyMsg),
-              ),
+              Expanded(child: Text(friendlyMsg)),
             ],
           ),
         ),
@@ -214,9 +190,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
   Future<void> _saveAndContinue() async {
     setState(() => _currentStep = OnboardingStep.completing);
 
-    await ref.read(authControllerProvider.notifier).completeOnboarding(
-          medicalData: _extractedData,
-        );
+    await ref.read(authControllerProvider.notifier).completeOnboarding(medicalData: _extractedData);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -247,26 +221,26 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Progress / Stepper Card
-            _buildHeaderBanner(),
+      body: ResponsiveCenter(
+        maxWidth: 820,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Progress / Stepper Card
+              _buildHeaderBanner(),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            if (_currentStep == OnboardingStep.selectDocument)
-              _buildUploadCard(),
+              if (_currentStep == OnboardingStep.selectDocument) _buildUploadCard(),
 
-            if (_currentStep == OnboardingStep.analyzing)
-              _buildAnalyzingState(),
+              if (_currentStep == OnboardingStep.analyzing) _buildAnalyzingState(),
 
-            if (_currentStep == OnboardingStep.reviewSummary ||
-                _currentStep == OnboardingStep.completing)
-              _buildSummaryView(),
-          ],
+              if (_currentStep == OnboardingStep.reviewSummary || _currentStep == OnboardingStep.completing)
+                _buildSummaryView(),
+            ],
+          ),
         ),
       ),
     );
@@ -295,13 +269,10 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'BAUST Smart Medi Onboarding',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+                Text('BAUST Smart Medi Onboarding', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 SizedBox(height: 2),
                 Text(
-                  'Upload clinical documents for automated Gemini 2.0 extraction.',
+                  'Upload prescriptions or reports — AI reads handwriting and fills your history.',
                   style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
                 ),
               ],
@@ -323,12 +294,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
       children: [
         const Text(
           'STEP 1: SELECT MEDICAL DOCUMENT',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
-            color: BaustColors.textMuted,
-          ),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1, color: BaustColors.textMuted),
         ),
         const SizedBox(height: 10),
 
@@ -345,9 +311,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: hasFile
-                      ? BaustColors.successGreen
-                      : BaustColors.primaryNavy.withValues(alpha: 0.3),
+                  color: hasFile ? BaustColors.successGreen : BaustColors.primaryNavy.withValues(alpha: 0.3),
                   width: hasFile ? 2 : 1.5,
                 ),
               ),
@@ -362,9 +326,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      hasFile
-                          ? (isPdf ? Icons.picture_as_pdf : Icons.image)
-                          : Icons.cloud_upload_outlined,
+                      hasFile ? (isPdf ? Icons.picture_as_pdf : Icons.image) : Icons.cloud_upload_outlined,
                       size: 48,
                       color: hasFile ? BaustColors.successGreen : BaustColors.primaryNavy,
                     ),
@@ -377,9 +339,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    hasFile
-                        ? 'Tap here to change or re-select file'
-                        : 'Tap here to browse PDF, JPG, or PNG from your device',
+                    hasFile ? 'Tap here to change or re-select file' : 'Take a photo, pick an image, or browse a PDF',
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
                   ),
@@ -407,42 +367,30 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                               children: [
                                 Text(
                                   fileName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '$fileSizeKb KB • Ready for AI extraction',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: BaustColors.textMuted,
-                                  ),
+                                  style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(
-                            Icons.check_circle_rounded,
-                            color: BaustColors.successGreen,
-                            size: 22,
-                          ),
+                          const Icon(Icons.check_circle_rounded, color: BaustColors.successGreen, size: 22),
                         ],
                       ),
                     ),
                   ] else ...[
                     OutlinedButton.icon(
                       onPressed: _pickDocument,
-                      icon: const Icon(Icons.folder_open_rounded),
-                      label: const Text('Browse Files on Device'),
+                      icon: const Icon(Icons.add_a_photo_rounded),
+                      label: const Text('Camera, Gallery or Files'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: BaustColors.primaryNavy,
                         side: const BorderSide(color: BaustColors.primaryNavy),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
                   ],
@@ -456,18 +404,14 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
 
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
-            backgroundColor: _retryCooldownSeconds > 0
-                ? Colors.grey.shade400
-                : BaustColors.primaryNavy,
+            backgroundColor: _retryCooldownSeconds > 0 ? Colors.grey.shade400 : BaustColors.primaryNavy,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           icon: Icon(_retryCooldownSeconds > 0 ? Icons.timer_outlined : Icons.auto_awesome),
           label: Text(
-            _retryCooldownSeconds > 0
-                ? 'TRY AGAIN (${_retryCooldownSeconds}s)'
-                : 'ANALYZE WITH GEMINI AI',
+            _retryCooldownSeconds > 0 ? 'TRY AGAIN (${_retryCooldownSeconds}s)' : 'ANALYZE WITH AI',
             style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.8),
           ),
           onPressed: _retryCooldownSeconds > 0 ? null : _startAiAnalysis,
@@ -477,55 +421,14 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
   }
 
   Widget _buildAnalyzingState() {
-    final stages = [
-      'Preparing document for processing...',
-      'Uploading binary to secure medical storage...',
-      'Gemini 2.0 Flash analyzing handwriting and diagnoses...',
-      'Structuring clinical issues and active medications...',
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Center(
-        child: Column(
-          children: [
-            const SizedBox(
-              height: 56,
-              width: 56,
-              child: CircularProgressIndicator(
-                strokeWidth: 4,
-                color: BaustColors.primaryNavy,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'AI Medical Analysis in Progress',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              stages[_analysisStage],
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                color: BaustColors.navyLight,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 20),
-            LinearProgressIndicator(
-              value: (_analysisStage + 1) / stages.length,
-              backgroundColor: const Color(0xFFE2E8F0),
-              color: BaustColors.primaryNavy,
-            ),
-          ],
-        ),
-      ),
+    return const AiScanProgress(
+      title: 'AI medical analysis in progress',
+      steps: [
+        'Preparing document',
+        'Recognising handwriting & print',
+        'Extracting diagnoses, allergies & medicines',
+        'Structuring your clinical summary',
+      ],
     );
   }
 
@@ -569,11 +472,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                   SizedBox(width: 4),
                   Text(
                     'Strict Document Extraction',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: BaustColors.primaryNavy,
-                    ),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.primaryNavy),
                   ),
                 ],
               ),
@@ -593,17 +492,10 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
                   child: Text(
                     data.bloodGroup ?? 'N/A',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: BaustColors.emergencyRed,
-                    ),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: BaustColors.emergencyRed),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -617,14 +509,8 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        data.bloodGroup != null
-                            ? 'Group: ${data.bloodGroup}'
-                            : 'Not found - confirm with patient',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: BaustColors.navyDark,
-                        ),
+                        data.bloodGroup != null ? 'Group: ${data.bloodGroup}' : 'Not found - confirm with patient',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: BaustColors.navyDark),
                       ),
                       if (data.bloodGroup != null) ...[
                         const SizedBox(height: 4),
@@ -638,11 +524,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                             ),
                             child: Text(
                               'From lab report',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade800,
-                              ),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade800),
                             ),
                           )
                         else
@@ -655,11 +537,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                             ),
                             child: Text(
                               'Unverified - confirm with a lab test',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amber.shade900,
-                              ),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                             ),
                           ),
                       ],
@@ -679,9 +557,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
             side: BorderSide(
-              color: hasDrugAllergies
-                  ? BaustColors.emergencyRed.withValues(alpha: 0.6)
-                  : Colors.grey.shade300,
+              color: hasDrugAllergies ? BaustColors.emergencyRed.withValues(alpha: 0.6) : Colors.grey.shade300,
               width: hasDrugAllergies ? 1.5 : 1.0,
             ),
           ),
@@ -693,18 +569,11 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                 Row(
                   children: [
                     Icon(
-                      hasDrugAllergies
-                          ? Icons.warning_rounded
-                          : Icons.shield_outlined,
-                      color: hasDrugAllergies
-                          ? BaustColors.emergencyRed
-                          : BaustColors.primaryNavy,
+                      hasDrugAllergies ? Icons.warning_rounded : Icons.shield_outlined,
+                      color: hasDrugAllergies ? BaustColors.emergencyRed : BaustColors.primaryNavy,
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Allergies by Category',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    const Text('Allergies by Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const Divider(height: 18),
@@ -756,10 +625,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                   children: [
                     Icon(Icons.medical_information_outlined, color: BaustColors.primaryNavy),
                     SizedBox(width: 8),
-                    Text(
-                      'Chronic Conditions',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    Text('Chronic Conditions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const Divider(height: 18),
@@ -779,7 +645,11 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                           Expanded(
                             child: Text(
                               condition,
-                              style: const TextStyle(fontSize: 13, color: BaustColors.textDark, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: BaustColors.textDark,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -806,10 +676,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                   children: [
                     Icon(Icons.medication_rounded, color: BaustColors.primaryNavy),
                     SizedBox(width: 8),
-                    Text(
-                      'Medications (from document)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    Text('Medications (from document)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const Divider(height: 18),
@@ -903,10 +770,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                   children: [
                     Icon(Icons.biotech_outlined, color: BaustColors.primaryNavy),
                     SizedBox(width: 8),
-                    Text(
-                      'Abnormal Lab Findings',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    Text('Abnormal Lab Findings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const Divider(height: 18),
@@ -927,7 +791,11 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                           Expanded(
                             child: Text(
                               lab,
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.orange.shade900),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.orange.shade900,
+                              ),
                             ),
                           ),
                         ],
@@ -1043,10 +911,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                     children: [
                       Icon(Icons.history_edu_outlined, color: BaustColors.primaryNavy),
                       SizedBox(width: 8),
-                      Text(
-                        'Past Clinical Visits',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      Text('Past Clinical Visits', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const Divider(height: 18),
@@ -1088,10 +953,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                   children: [
                     Icon(Icons.tips_and_updates_outlined, color: BaustColors.primaryNavy),
                     SizedBox(width: 8),
-                    Text(
-                      "Doctor's Advice & Follow-up",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    Text("Doctor's Advice & Follow-up", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const Divider(height: 18),
@@ -1120,11 +982,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                       SizedBox(width: 6),
                       Text(
                         'Scheduled Follow-ups',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: BaustColors.primaryNavy,
-                        ),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: BaustColors.primaryNavy),
                       ),
                     ],
                   ),
@@ -1162,10 +1020,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
           elevation: 1,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
-            side: BorderSide(
-              color: Colors.amber.shade400,
-              width: 1.5,
-            ),
+            side: BorderSide(color: Colors.amber.shade400, width: 1.5),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1174,34 +1029,17 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.hourglass_empty_rounded,
-                      color: Colors.amber.shade800,
-                      size: 20,
-                    ),
+                    Icon(Icons.hourglass_empty_rounded, color: Colors.amber.shade800, size: 20),
                     const SizedBox(width: 8),
                     const Expanded(
-                      child: Text(
-                        'Blood Donation Status',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: Text('Blood Donation Status', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(8)),
                       child: Text(
                         'PENDING REVIEW',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber.shade900,
-                        ),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                       ),
                     ),
                   ],
@@ -1209,20 +1047,12 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                 const Divider(height: 16),
                 const Text(
                   'Pending Clinical Screening (Requires Manual Staff Review)',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: BaustColors.textDark,
-                  ),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: BaustColors.textDark),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'For student and patient safety, automated AI eligibility decisions are disabled. Blood donor qualification must be evaluated in-person by BAUST Medical Center medical officers.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                    height: 1.35,
-                  ),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.35),
                 ),
               ],
             ),
@@ -1252,11 +1082,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                       Expanded(
                         child: Text(
                           'No clinical details were found in this file',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.amber.shade900,
-                          ),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                         ),
                       ),
                     ],
@@ -1309,9 +1135,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
             isCompleting ? 'SAVING PROFILE...' : 'SAVE & CONTINUE TO SOS PORTAL',
             style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.8),
           ),
-          onPressed: isCompleting || (data.hasNoClinicalDetails && !_confirmEmptyRecord)
-              ? null
-              : _saveAndContinue,
+          onPressed: isCompleting || (data.hasNoClinicalDetails && !_confirmEmptyRecord) ? null : _saveAndContinue,
         ),
       ],
     );
@@ -1348,10 +1172,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade100,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: Colors.red.shade100, shape: BoxShape.circle),
                   child: Icon(
                     isUnreadable ? Icons.broken_image_outlined : Icons.gpp_bad_rounded,
                     color: BaustColors.emergencyRed,
@@ -1372,14 +1193,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        errorBody,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.red.shade900,
-                          height: 1.4,
-                        ),
-                      ),
+                      Text(errorBody, style: TextStyle(fontSize: 13, color: Colors.red.shade900, height: 1.4)),
                     ],
                   ),
                 ),
@@ -1396,10 +1210,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           icon: const Icon(Icons.upload_file),
-          label: const Text(
-            'Upload another file',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+          label: const Text('Upload another file', style: TextStyle(fontWeight: FontWeight.bold)),
           onPressed: _resetDocumentSelection,
         ),
       ],
@@ -1415,15 +1226,9 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isCritical && items.isNotEmpty
-            ? Colors.red.shade50
-            : const Color(0xFFF8FAFC),
+        color: isCritical && items.isNotEmpty ? Colors.red.shade50 : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isCritical && items.isNotEmpty
-              ? Colors.red.shade200
-              : Colors.grey.shade200,
-        ),
+        border: Border.all(color: isCritical && items.isNotEmpty ? Colors.red.shade200 : Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1433,9 +1238,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
               Icon(
                 icon,
                 size: 16,
-                color: isCritical && items.isNotEmpty
-                    ? BaustColors.emergencyRed
-                    : BaustColors.primaryNavy,
+                color: isCritical && items.isNotEmpty ? BaustColors.emergencyRed : BaustColors.primaryNavy,
               ),
               const SizedBox(width: 6),
               Text(
@@ -1443,9 +1246,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: isCritical && items.isNotEmpty
-                      ? BaustColors.emergencyRed
-                      : BaustColors.textDark,
+                  color: isCritical && items.isNotEmpty ? BaustColors.emergencyRed : BaustColors.textDark,
                 ),
               ),
             ],
@@ -1459,11 +1260,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
                   const SizedBox(width: 6),
                   Text(
                     'Not found - confirm with patient',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.amber.shade900,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.amber.shade900),
                   ),
                 ],
               )
@@ -1548,11 +1345,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
       ),
       child: Text(
         status,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: textColor,
-        ),
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textColor),
       ),
     );
   }

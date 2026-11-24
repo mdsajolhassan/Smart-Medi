@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../../blood_bank/presentation/screens/blood_donor_directory.dart';
@@ -9,18 +10,13 @@ class SosScreen extends ConsumerStatefulWidget {
   final VoidCallback? onNavigateToProfile;
   final bool showAppBar;
 
-  const SosScreen({
-    super.key,
-    this.onNavigateToProfile,
-    this.showAppBar = true,
-  });
+  const SosScreen({super.key, this.onNavigateToProfile, this.showAppBar = true});
 
   @override
   ConsumerState<SosScreen> createState() => _SosScreenState();
 }
 
-class _SosScreenState extends ConsumerState<SosScreen>
-    with SingleTickerProviderStateMixin {
+class _SosScreenState extends ConsumerState<SosScreen> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -43,14 +39,13 @@ class _SosScreenState extends ConsumerState<SosScreen>
     _selectedSymptom = _symptomCategories.first;
 
     // Pulse animation for the panic button
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+      ..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.15,
+    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
   }
 
   @override
@@ -70,8 +65,8 @@ class _SosScreenState extends ConsumerState<SosScreen>
     String? studentRoll,
     String? department,
   }) {
-    final finalIssue = (_selectedSymptom == 'Other Critical Emergency' &&
-            _customEmergencyController.text.trim().isNotEmpty)
+    final finalIssue =
+        (_selectedSymptom == 'Other Critical Emergency' && _customEmergencyController.text.trim().isNotEmpty)
         ? 'Other Critical Emergency: ${_customEmergencyController.text.trim()}'
         : _selectedSymptom;
 
@@ -101,13 +96,12 @@ class _SosScreenState extends ConsumerState<SosScreen>
             child: const Text('Cancel', style: TextStyle(color: BaustColors.textMuted)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: BaustColors.emergencyRed,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: BaustColors.emergencyRed, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
-              ref.read(sosControllerProvider.notifier).triggerEmergency(
+              ref
+                  .read(sosControllerProvider.notifier)
+                  .triggerEmergency(
                     residentialHall: hall,
                     roomNumber: room,
                     symptomCategory: finalIssue,
@@ -137,11 +131,7 @@ class _SosScreenState extends ConsumerState<SosScreen>
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Emergency SOS Dispatched! Alert ID: ${next.activeAlertId?.substring(0, 8)}...',
-                  ),
-                ),
+                Expanded(child: Text('Emergency SOS Dispatched! Alert ID: ${next.activeAlertId?.substring(0, 8)}...')),
               ],
             ),
             duration: const Duration(seconds: 5),
@@ -173,12 +163,7 @@ class _SosScreenState extends ConsumerState<SosScreen>
                   tooltip: 'Smart Blood Bank',
                   icon: const Icon(Icons.volunteer_activism_outlined),
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const BloodDonorDirectoryScreen(),
-                      ),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()));
                   },
                 ),
                 IconButton(
@@ -210,11 +195,7 @@ class _SosScreenState extends ConsumerState<SosScreen>
                   Expanded(
                     child: Text(
                       'BAUST Medical Center 24/7 Hotline: ${BaustEmergencyContacts.hotlineDisplay}\nAmbulance: ${BaustEmergencyContacts.ambulanceDisplay}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red.shade900,
-                      ),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red.shade900),
                     ),
                   ),
                 ],
@@ -226,12 +207,7 @@ class _SosScreenState extends ConsumerState<SosScreen>
             // Blood Donor Directory Quick Banner
             InkWell(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const BloodDonorDirectoryScreen(),
-                  ),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()));
               },
               borderRadius: BorderRadius.circular(12),
               child: Container(
@@ -246,15 +222,8 @@ class _SosScreenState extends ConsumerState<SosScreen>
                   children: [
                     Container(
                       padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.volunteer_activism,
-                        color: BaustColors.emergencyRed,
-                        size: 20,
-                      ),
+                      decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+                      child: const Icon(Icons.volunteer_activism, color: BaustColors.emergencyRed, size: 20),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -263,27 +232,16 @@ class _SosScreenState extends ConsumerState<SosScreen>
                         children: [
                           Text(
                             'Blood Donor Directory',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: BaustColors.textDark,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: BaustColors.textDark),
                           ),
                           Text(
                             'Self-reported blood groups - confirm before transfusion',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: BaustColors.textMuted,
-                            ),
+                            style: TextStyle(fontSize: 11, color: BaustColors.textMuted),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: BaustColors.emergencyRed,
-                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: BaustColors.emergencyRed),
                   ],
                 ),
               ),
@@ -298,22 +256,20 @@ class _SosScreenState extends ConsumerState<SosScreen>
                 onTap: sosState.status == SosStatus.triggering
                     ? null
                     : () => _showConfirmationDialog(
-                          hall: hall,
-                          room: room,
-                          isResidential: isRes,
-                          locationSummary: locationSummary,
-                          studentName: user?.displayName,
-                          studentRoll: user?.studentRoll,
-                          department: user?.department,
-                        ),
+                        hall: hall,
+                        room: room,
+                        isResidential: isRes,
+                        locationSummary: locationSummary,
+                        studentName: user?.displayName,
+                        studentRoll: user?.studentRoll,
+                        department: user?.department,
+                      ),
                 child: Container(
                   height: 180,
                   width: 180,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const RadialGradient(
-                      colors: [Color(0xFFEF4444), BaustColors.emergencyRed],
-                    ),
+                    gradient: const RadialGradient(colors: [Color(0xFFEF4444), BaustColors.emergencyRed]),
                     boxShadow: [
                       BoxShadow(
                         color: BaustColors.emergencyRed.withValues(alpha: 0.4),
@@ -339,10 +295,7 @@ class _SosScreenState extends ConsumerState<SosScreen>
                                   letterSpacing: 1.5,
                                 ),
                               ),
-                              const Text(
-                                'Tap to Dispatch',
-                                style: TextStyle(color: Colors.white70, fontSize: 11),
-                              ),
+                              const Text('Tap to Dispatch', style: TextStyle(color: Colors.white70, fontSize: 11)),
                             ],
                           ),
                   ),
@@ -360,13 +313,7 @@ class _SosScreenState extends ConsumerState<SosScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.grey.shade200),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 4,
-                    offset: Offset(0, 1),
-                  ),
-                ],
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,14 +400,8 @@ class _SosScreenState extends ConsumerState<SosScreen>
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Room',
-                                    style: TextStyle(fontSize: 10, color: BaustColors.textMuted),
-                                  ),
-                                  Text(
-                                    room,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
+                                  const Text('Room', style: TextStyle(fontSize: 10, color: BaustColors.textMuted)),
+                                  Text(room, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 ],
                               ),
                             ],

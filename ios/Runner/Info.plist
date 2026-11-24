@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Smart Medi uses the camera to photograph paper prescriptions so they can be digitized.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Smart Medi needs photo access so you can upload prescription images.</string>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>
