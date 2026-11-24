@@ -9,6 +9,7 @@ import '../../../medical_operations/data/models/prescription_model.dart';
 import '../../../medical_operations/data/services/prescription_pdf_service.dart';
 import '../../../medical_operations/presentation/screens/new_prescription_screen.dart';
 import '../../../../core/widgets/responsive.dart';
+import '../../../../core/widgets/animations.dart';
 
 /// Clinical Timeline Entry Model representing individual chronological milestones
 class ClinicalTimelineEntry {
@@ -60,6 +61,7 @@ class DetailedMedicalHistoryScreen extends ConsumerStatefulWidget {
 class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHistoryScreen> {
   String _selectedCategory = 'All';
   String _searchQuery = '';
+  bool _showAllPrescriptions = false;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -499,6 +501,156 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
       return matchesCategory && matchesQuery;
     }).toList();
 
+    final List<Widget> timelineWidgets = [
+      // Metrics Summary Grid
+      _buildMetricsGrid(allEntries),
+
+      const SizedBox(height: 16),
+
+      // Search Bar
+      TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search surgeries, prescriptions, conditions, notes...',
+          prefixIcon: const Icon(Icons.search, color: BaustColors.primaryNavy),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+        ),
+        onChanged: (val) => setState(() => _searchQuery = val),
+      ),
+
+      const SizedBox(height: 12),
+
+      // Category Filter Chips
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: ['All', 'Surgeries', 'Prescriptions', 'Conditions', 'Clinical Notes', 'Critical Flags'].map((
+            category,
+          ) {
+            final isSelected = _selectedCategory == category;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                selected: isSelected,
+                showCheckmark: false,
+                label: Text(
+                  category,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : BaustColors.textDark,
+                  ),
+                ),
+                selectedColor: BaustColors.primaryNavy,
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(color: isSelected ? BaustColors.primaryNavy : Colors.grey.shade300),
+                ),
+                onSelected: (_) => setState(() => _selectedCategory = category),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+
+      const SizedBox(height: 20),
+
+      // Section Title
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.timeline, color: BaustColors.primaryNavy, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'A-TO-Z CHRONOLOGICAL CLINICAL TIMELINE',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                  color: BaustColors.primaryNavy,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '${filteredEntries.length} Records',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BaustColors.textMuted),
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 12),
+
+      if (filteredEntries.isEmpty)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            children: [
+              const Icon(Icons.search_off, size: 40, color: BaustColors.textMuted),
+              const SizedBox(height: 10),
+              Text(
+                allEntries.isEmpty
+                    ? (widget.isDoctorView
+                          ? 'This student has not uploaded a medical history yet.'
+                          : 'Not found - confirm with patient')
+                    : 'No timeline entries match your filter',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                allEntries.isEmpty
+                    ? (widget.isDoctorView
+                          ? 'No medical documents or prescriptions have been submitted by this student.'
+                          : 'No clinical records found in medical history for this patient.')
+                    : 'Try selecting a different category or clearing search.',
+                style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        )
+      else
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: filteredEntries.length,
+          itemBuilder: (context, index) {
+            final item = filteredEntries[index];
+            final isLast = index == filteredEntries.length - 1;
+            return FadeSlideIn(index: index, child: _buildTimelineItem(item, isLast));
+          },
+        ),
+    ];
+
     return Scaffold(
       backgroundColor: BaustColors.surfaceBg,
       appBar: AppBar(
@@ -555,158 +707,52 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
 
               const SizedBox(height: 16),
 
-              // Prescriptions Issued Section (Doctor & Student View)
-              _buildIssuedPrescriptionsSection(context, user, digitalPrescriptions, data),
-
-              const SizedBox(height: 16),
-
-              // Metrics Summary Grid
-              _buildMetricsGrid(allEntries),
-
-              const SizedBox(height: 16),
-
-              // Search Bar
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search surgeries, prescriptions, conditions, notes...',
-                  prefixIcon: const Icon(Icons.search, color: BaustColors.primaryNavy),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                ),
-                onChanged: (val) => setState(() => _searchQuery = val),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Category Filter Chips
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: ['All', 'Surgeries', 'Prescriptions', 'Conditions', 'Clinical Notes', 'Critical Flags'].map(
-                    (category) {
-                      final isSelected = _selectedCategory == category;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          selected: isSelected,
-                          showCheckmark: false,
-                          label: Text(
-                            category,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : BaustColors.textDark,
-                            ),
-                          ),
-                          selectedColor: BaustColors.primaryNavy,
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(color: isSelected ? BaustColors.primaryNavy : Colors.grey.shade300),
-                          ),
-                          onSelected: (_) => setState(() => _selectedCategory = category),
-                        ),
-                      );
-                    },
-                  ).toList(),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Section Title
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.timeline, color: BaustColors.primaryNavy, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'A-TO-Z CHRONOLOGICAL CLINICAL TIMELINE',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                          color: BaustColors.primaryNavy,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    '${filteredEntries.length} Records',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BaustColors.textMuted),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              if (filteredEntries.isEmpty)
+              if (widget.isDoctorView) ...[
+                // Grouped, most-recent-first layout for doctors
+                _buildIssuedPrescriptionsSection(context, user, digitalPrescriptions, data),
+                const SizedBox(height: 16),
+                _buildRecentUploadSection(data),
+                const SizedBox(height: 16),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade200),
                   ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.search_off, size: 40, color: BaustColors.textMuted),
-                      const SizedBox(height: 10),
-                      Text(
-                        allEntries.isEmpty
-                            ? (widget.isDoctorView
-                                  ? 'This student has not uploaded a medical history yet.'
-                                  : 'Not found - confirm with patient')
-                            : 'No timeline entries match your filter',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        leading: const Icon(Icons.timeline, color: BaustColors.primaryNavy),
+                        title: Text(
+                          'FULL CLINICAL TIMELINE (${allEntries.length})',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                            color: BaustColors.textDark,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Search and filter every record',
+                          style: TextStyle(fontSize: 11, color: BaustColors.textMuted),
+                        ),
+                        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                        children: [...timelineWidgets],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        allEntries.isEmpty
-                            ? (widget.isDoctorView
-                                  ? 'No medical documents or prescriptions have been submitted by this student.'
-                                  : 'No clinical records found in medical history for this patient.')
-                            : 'Try selecting a different category or clearing search.',
-                        style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                    ),
                   ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredEntries.length,
-                  itemBuilder: (context, index) {
-                    final item = filteredEntries[index];
-                    final isLast = index == filteredEntries.length - 1;
-                    return _buildTimelineItem(item, isLast);
-                  },
                 ),
+              ] else ...[
+                // Prescriptions Issued Section (Doctor & Student View)
+                _buildIssuedPrescriptionsSection(context, user, digitalPrescriptions, data),
+
+                const SizedBox(height: 16),
+
+                ...timelineWidgets,
+              ],
 
               const SizedBox(height: 24),
             ],
@@ -1180,8 +1226,211 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                 style: const TextStyle(fontSize: 12, color: BaustColors.textMuted, fontStyle: FontStyle.italic),
               ),
             )
+          else ...[
+            // Newest first; doctors see the latest few, older ones on demand.
+            ...(widget.isDoctorView && !_showAllPrescriptions ? prescriptions.take(3) : prescriptions).map(
+              (rx) => FadeSlideIn(key: ValueKey('rx_${rx.id}'), child: _buildPrescriptionCard(context, user, rx)),
+            ),
+            if (widget.isDoctorView && prescriptions.length > 3)
+              Center(
+                child: TextButton.icon(
+                  icon: Icon(_showAllPrescriptions ? Icons.expand_less : Icons.expand_more, size: 18),
+                  label: Text(
+                    _showAllPrescriptions ? 'Show fewer' : 'Show ${prescriptions.length - 3} older prescription(s)',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () => setState(() => _showAllPrescriptions = !_showAllPrescriptions),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Doctor view: the student's latest uploaded / AI-extracted record, grouped by type.
+  Widget _buildRecentUploadSection(Map<String, dynamic>? data) {
+    List<Map> mapList(String key) =>
+        data != null && data[key] is List ? (data[key] as List).whereType<Map>().toList() : const [];
+    List<String> strList(String key) => data != null && data[key] is List
+        ? (data[key] as List).map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList()
+        : const [];
+    String field(Map m, List<String> keys) {
+      for (final k in keys) {
+        final v = m[k]?.toString().trim() ?? '';
+        if (v.isNotEmpty) return v;
+      }
+      return '';
+    }
+
+    final meds = mapList('prescriptions');
+    final activeIssues = strList('activeIssues');
+    final conditions = strList('historicalProblems');
+    final procedures = mapList('procedures');
+    final summary = data?['clinicalSummary']?.toString().trim() ?? '';
+
+    DateTime? uploadedAt;
+    final ts = data?['updatedAt'];
+    if (ts is Timestamp) uploadedAt = ts.toDate();
+    final uploadedLabel = uploadedAt != null
+        ? 'Uploaded ${uploadedAt.day.toString().padLeft(2, '0')}/${uploadedAt.month.toString().padLeft(2, '0')}/${uploadedAt.year}'
+        : 'Upload date unknown';
+
+    final groups = <({String title, IconData icon, Color color, List<Widget> items})>[
+      (
+        title: 'Current Medications',
+        icon: Icons.medication,
+        color: BaustColors.primaryArmyGreen,
+        items: [
+          for (final m in meds)
+            _uploadLine(
+              field(m, ['name']).isEmpty ? 'Unnamed medicine' : field(m, ['name']),
+              [
+                field(m, ['dosage', 'dose']),
+                field(m, ['frequency']),
+                field(m, ['instructions', 'duration_text']),
+              ].where((e) => e.isNotEmpty).join(' • '),
+              trailing: field(m, ['prescribed_date']),
+            ),
+          // activeIssues mirrors the medications above; only show it for older records without them.
+          if (meds.isEmpty)
+            for (final a in activeIssues) _uploadLine(a, 'Ongoing regimen'),
+        ],
+      ),
+      (
+        title: 'Conditions / Diagnoses',
+        icon: Icons.healing,
+        color: Colors.blue.shade700,
+        items: [for (final c in conditions) _uploadLine(c, '')],
+      ),
+      (
+        title: 'Surgeries & Procedures',
+        icon: Icons.local_hospital,
+        color: BaustColors.emergencyRed,
+        items: [
+          for (final p in procedures)
+            _uploadLine(
+              field(p, ['name']).isEmpty ? 'Unnamed procedure' : field(p, ['name']),
+              [
+                field(p, ['facility']),
+                field(p, ['details', 'dosage']),
+              ].where((e) => e.isNotEmpty).join(' • '),
+              trailing: field(p, ['date']),
+            ),
+        ],
+      ),
+      (
+        title: 'Clinical Summary',
+        icon: Icons.article_outlined,
+        color: BaustColors.primaryNavy,
+        items: [
+          if (summary.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(summary, style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
+            ),
+        ],
+      ),
+    ];
+
+    final nonEmpty = groups.where((g) => g.items.isNotEmpty).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.upload_file, color: BaustColors.primaryNavy, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'RECENT UPLOAD (STUDENT DOCUMENTS)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    color: BaustColors.textDark,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
+                child: Text(
+                  uploadedLabel,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.textDark),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'AI-extracted from documents the student uploaded. Confirm with patient.',
+            style: TextStyle(fontSize: 11, color: BaustColors.textMuted),
+          ),
+          const SizedBox(height: 8),
+          if (nonEmpty.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'This student has not uploaded any medical documents yet.',
+                style: TextStyle(fontSize: 12, color: BaustColors.textMuted, fontStyle: FontStyle.italic),
+              ),
+            )
           else
-            Column(children: prescriptions.map((rx) => _buildPrescriptionCard(context, user, rx)).toList()),
+            Material(
+              type: MaterialType.transparency,
+              child: Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < nonEmpty.length; i++)
+                      ExpansionTile(
+                        initiallyExpanded: i == 0,
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+                        childrenPadding: const EdgeInsets.only(left: 36, right: 4),
+                        leading: Icon(nonEmpty[i].icon, color: nonEmpty[i].color, size: 20),
+                        title: Text(
+                          '${nonEmpty[i].title} (${nonEmpty[i].items.length})',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                        children: nonEmpty[i].items,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _uploadLine(String title, String subtitle, {String trailing = ''}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                if (subtitle.isNotEmpty)
+                  Text(subtitle, style: const TextStyle(fontSize: 11, color: BaustColors.textMuted)),
+              ],
+            ),
+          ),
+          if (trailing.isNotEmpty) Text(trailing, style: const TextStyle(fontSize: 11, color: BaustColors.textMuted)),
         ],
       ),
     );
@@ -1203,6 +1452,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
       diagnosis: rx.diagnosis,
       items: rx.items,
       advice: rx.advice,
+      testsReferred: rx.testsReferred,
       followUpDate: rx.followUpDate,
       source: rx.source,
       createdAt: rx.createdAt,
@@ -1261,6 +1511,13 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                 style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
               ),
             ),
+          if (rx.testsReferred.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Tests referred: ${rx.testsReferred.join(', ')}',
+              style: const TextStyle(fontSize: 11, color: BaustColors.primaryNavy, fontWeight: FontWeight.w600),
+            ),
+          ],
           if (rx.advice != null && rx.advice!.trim().isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
@@ -1276,19 +1533,34 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
             ),
           ],
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: BaustColors.primaryNavy,
-                side: const BorderSide(color: BaustColors.primaryNavy),
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BaustColors.primaryNavy,
+                  foregroundColor: Colors.white,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+                icon: const Icon(Icons.download_rounded, size: 14),
+                label: const Text('Download PDF', style: TextStyle(fontSize: 11)),
+                onPressed: () => PrescriptionPdfService.download(enrichedRx),
               ),
-              icon: const Icon(Icons.print_outlined, size: 14),
-              label: const Text('Print / Save PDF', style: TextStyle(fontSize: 11)),
-              onPressed: () => PrescriptionPdfService.printOrShare(enrichedRx),
-            ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: BaustColors.primaryNavy,
+                  side: const BorderSide(color: BaustColors.primaryNavy),
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+                icon: const Icon(Icons.print_outlined, size: 14),
+                label: const Text('Print', style: TextStyle(fontSize: 11)),
+                onPressed: () => PrescriptionPdfService.printOrShare(enrichedRx),
+              ),
+            ],
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+
 import '../models/prescription_model.dart';
 
 class PrescriptionPdfService {
@@ -18,12 +19,7 @@ class PrescriptionPdfService {
     }
 
     final baseTheme = bengaliFont != null
-        ? pw.ThemeData.withFont(
-            base: bengaliFont,
-            bold: bengaliFont,
-            italic: bengaliFont,
-            boldItalic: bengaliFont,
-          )
+        ? pw.ThemeData.withFont(base: bengaliFont, bold: bengaliFont, italic: bengaliFont, boldItalic: bengaliFont)
         : pw.ThemeData.base();
 
     final dateStr = rx.createdAt != null
@@ -63,11 +59,7 @@ class PrescriptionPdfService {
                     children: [
                       pw.Text(
                         'BAUST Medical Center',
-                        style: pw.TextStyle(
-                          fontSize: 22,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.blueGrey900,
-                        ),
+                        style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey900),
                       ),
                       pw.SizedBox(height: 3),
                       pw.Text(
@@ -76,26 +68,16 @@ class PrescriptionPdfService {
                       ),
                       pw.Text(
                         'Official Digital Clinical Prescription',
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.teal800,
-                        ),
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.teal800),
                       ),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text(
-                        'Date: $dateStr',
-                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
-                      ),
+                      pw.Text('Date: $dateStr', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                       pw.SizedBox(height: 2),
-                      pw.Text(
-                        'Rx ID: ${rx.id}',
-                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
-                      ),
+                      pw.Text('Rx ID: ${rx.id}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
                     ],
                   ),
                 ],
@@ -128,15 +110,9 @@ class PrescriptionPdfService {
                             style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
                           ),
                           pw.SizedBox(height: 4),
-                          pw.Text(
-                            'Student ID / Roll: ${rx.studentId}',
-                            style: const pw.TextStyle(fontSize: 10),
-                          ),
+                          pw.Text('Student ID / Roll: ${rx.studentId}', style: const pw.TextStyle(fontSize: 10)),
                           pw.SizedBox(height: 4),
-                          pw.Text(
-                            'Department: $deptStr',
-                            style: const pw.TextStyle(fontSize: 10),
-                          ),
+                          pw.Text('Department: $deptStr', style: const pw.TextStyle(fontSize: 10)),
                         ],
                       ),
                     ),
@@ -145,10 +121,7 @@ class PrescriptionPdfService {
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text(
-                            'Blood Group: $bloodStr',
-                            style: const pw.TextStyle(fontSize: 10),
-                          ),
+                          pw.Text('Blood Group: $bloodStr', style: const pw.TextStyle(fontSize: 10)),
                           pw.SizedBox(height: 4),
                           pw.Text(
                             rx.source == 'scan'
@@ -201,11 +174,7 @@ class PrescriptionPdfService {
                 children: [
                   pw.Text(
                     'Rx',
-                    style: pw.TextStyle(
-                      fontSize: 22,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.teal900,
-                    ),
+                    style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
                   ),
                   pw.SizedBox(width: 8),
                   pw.Text(
@@ -240,9 +209,7 @@ class PrescriptionPdfService {
                   ),
                   for (int i = 0; i < rx.items.length; i++)
                     pw.TableRow(
-                      decoration: pw.BoxDecoration(
-                        color: i % 2 == 0 ? PdfColors.white : PdfColors.grey50,
-                      ),
+                      decoration: pw.BoxDecoration(color: i % 2 == 0 ? PdfColors.white : PdfColors.grey50),
                       children: [
                         _buildTableCell('${i + 1}'),
                         _buildTableCell(rx.items[i].name, isBold: true),
@@ -256,6 +223,37 @@ class PrescriptionPdfService {
               ),
 
               pw.SizedBox(height: 14),
+
+              // ==========================================
+              // TESTS REFERRED (OPTIONAL)
+              // ==========================================
+              if (rx.testsReferred.isNotEmpty) ...[
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(8),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.blue50,
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                    border: pw.Border.all(color: PdfColors.blue200),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Investigations / Tests Referred:',
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                      ),
+                      pw.SizedBox(height: 3),
+                      for (int i = 0; i < rx.testsReferred.length; i++)
+                        pw.Text(
+                          '${i + 1}. ${rx.testsReferred[i]}',
+                          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey900),
+                        ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+              ],
 
               // ==========================================
               // ADVICE / INSTRUCTIONS (OPTIONAL)
@@ -277,10 +275,7 @@ class PrescriptionPdfService {
                         style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800),
                       ),
                       pw.SizedBox(height: 3),
-                      pw.Text(
-                        rx.advice!.trim(),
-                        style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey900),
-                      ),
+                      pw.Text(rx.advice!.trim(), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey900)),
                     ],
                   ),
                 ),
@@ -383,6 +378,13 @@ class PrescriptionPdfService {
         ),
       ),
     );
+  }
+
+  /// Downloads the prescription as a PDF file (browser download on web,
+  /// share sheet on mobile).
+  static Future<void> download(PrescriptionModel rx) async {
+    final bytes = await generatePdf(rx);
+    await Printing.sharePdf(bytes: bytes, filename: 'Prescription_${rx.studentId}_${rx.id}.pdf');
   }
 
   static Future<void> printOrShare(PrescriptionModel rx) async {

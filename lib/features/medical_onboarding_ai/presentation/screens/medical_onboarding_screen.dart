@@ -10,6 +10,7 @@ import '../../../../core/widgets/document_scan_widgets.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../data/services/gemini_ai_service.dart';
 import '../../../../core/widgets/responsive.dart';
+import '../../../../features/admin_portal/presentation/screens/feedback_screens.dart';
 
 enum OnboardingStep { selectDocument, analyzing, reviewSummary, completing }
 
@@ -214,6 +215,7 @@ class _MedicalOnboardingScreenState extends ConsumerState<MedicalOnboardingScree
       appBar: AppBar(
         title: const Text('AI Medical History Onboarding'),
         actions: [
+          const FeedbackIconButton(),
           IconButton(
             tooltip: 'Sign Out',
             icon: const Icon(Icons.logout_rounded),

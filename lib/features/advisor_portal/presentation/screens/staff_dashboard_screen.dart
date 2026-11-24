@@ -5,6 +5,7 @@ import '../../../../core/constants/baust_constants.dart';
 import '../../../../core/widgets/smart_medi_drawer.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../../../core/widgets/responsive.dart';
+import '../../../../features/admin_portal/presentation/screens/feedback_screens.dart';
 
 class StaffDashboardScreen extends ConsumerStatefulWidget {
   const StaffDashboardScreen({super.key});
@@ -145,6 +146,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
           ],
         ),
         actions: [
+          const FeedbackIconButton(),
           IconButton(
             tooltip: 'Sign Out',
             icon: const Icon(Icons.logout_rounded),

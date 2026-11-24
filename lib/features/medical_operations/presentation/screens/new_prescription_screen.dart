@@ -66,6 +66,42 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _diagnosisController = TextEditingController();
   final _adviceController = TextEditingController();
+  final _customTestController = TextEditingController();
+  final List<String> _testsReferred = [];
+  // Live pharmacy stock: medicine name -> units left.
+  Map<String, int> _stock = {for (final m in PharmacyCatalogue.stockedMedicines) m: -1};
+
+  /// Units in stock for [name]: null = not in the pharmacy, -1 = unknown (offline list).
+  int? _unitsFor(String name) {
+    final n = name.trim().toLowerCase();
+    for (final e in _stock.entries) {
+      if (e.key.toLowerCase() == n) return e.value;
+    }
+    return null;
+  }
+
+  /// In the pharmacy AND not out of stock. Out-of-stock medicines are treated as custom
+  /// so the admin hears about them.
+  bool _isStocked(String name) {
+    final units = _unitsFor(name);
+    return units != null && units != 0;
+  }
+
+  Future<void> _loadStock() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection(FirestoreCollections.inventory).get();
+      if (snap.docs.isEmpty || !mounted) return;
+      setState(() {
+        _stock = {
+          for (final d in snap.docs)
+            (d.data()['brandName'] ?? d.id).toString(): (d.data()['stockUnits'] as num?)?.toInt() ?? 0,
+        };
+      });
+    } catch (_) {
+      // Keep the built-in list if inventory can't be read.
+    }
+  }
+
   DateTime? _selectedFollowUpDate;
   bool _isSubmitting = false;
   bool _isScanning = false;
@@ -91,6 +127,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
   @override
   void initState() {
     super.initState();
+    _loadStock();
 
     _diagnosisController.addListener(() {
       if (_isDiagnosisAiExtracted && _diagnosisController.text != _prefilledDiagnosis) {
@@ -111,6 +148,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
   void dispose() {
     _diagnosisController.dispose();
     _adviceController.dispose();
+    _customTestController.dispose();
     for (final row in _medicineRows) {
       row.dispose();
     }
@@ -595,6 +633,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
         diagnosis: _diagnosisController.text.trim(),
         items: items,
         advice: _adviceController.text.trim().isNotEmpty ? _adviceController.text.trim() : null,
+        testsReferred: List.of(_testsReferred),
         followUpDate: _selectedFollowUpDate,
         source: _prescriptionSource,
         studentDepartment: widget.studentDepartment,
@@ -608,6 +647,24 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
         final firestore = FirebaseFirestore.instance;
         final docRef = firestore.collection('prescriptions').doc();
         await docRef.set(prescription.toFirestoreMap());
+
+        // Medicines not stocked by the pharmacy go to the admin account for review.
+        final customMeds = items.map((i) => i.name).where((n) => n.isNotEmpty && !_isStocked(n)).toSet();
+        for (final med in customMeds) {
+          try {
+            await firestore.collection(FirestoreCollections.customMedicineRequests).add({
+              'medicineName': med,
+              'doctorUid': doctorUid,
+              'doctorName': doctorName,
+              'prescriptionId': docRef.id,
+              'studentId': widget.studentId,
+              'status': 'pending',
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+          } catch (_) {
+            // Never block issuing a prescription because the admin notice failed.
+          }
+        }
 
         // Audit Trail access_logs
         await firestore.collection('access_logs').add({
@@ -1026,6 +1083,13 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
                 const SizedBox(height: 12),
 
                 // ==========================================
+                // TESTS REFERRED (OPTIONAL)
+                // ==========================================
+                _buildTestsReferredSection(),
+
+                const SizedBox(height: 14),
+
+                // ==========================================
                 // ADVICE (OPTIONAL)
                 // ==========================================
                 Row(
@@ -1135,6 +1199,71 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
     );
   }
 
+  void _addCustomTest() {
+    final test = _customTestController.text.trim();
+    if (test.isEmpty) return;
+    setState(() {
+      if (!_testsReferred.any((t) => t.toLowerCase() == test.toLowerCase())) _testsReferred.add(test);
+      _customTestController.clear();
+    });
+  }
+
+  Widget _buildTestsReferredSection() {
+    final customTests = _testsReferred.where((t) => !PharmacyCatalogue.commonTests.contains(t)).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tests Referred (Optional)',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: BaustColors.textDark),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final test in PharmacyCatalogue.commonTests)
+              FilterChip(
+                label: Text(test, style: const TextStyle(fontSize: 12)),
+                selected: _testsReferred.contains(test),
+                onSelected: (on) => setState(() => on ? _testsReferred.add(test) : _testsReferred.remove(test)),
+              ),
+            for (final test in customTests)
+              InputChip(
+                label: Text(test, style: const TextStyle(fontSize: 12)),
+                selected: true,
+                onDeleted: () => setState(() => _testsReferred.remove(test)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _customTestController,
+                decoration: InputDecoration(
+                  hintText: 'Add a custom test, e.g. Thyroid Profile (TSH)',
+                  isDense: true,
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onSubmitted: (_) => _addCustomTest(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add'),
+              onPressed: _addCustomTest,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildMedicineCard(int index, MedicineRowData row) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1179,17 +1308,61 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
           TextFormField(
             controller: row.nameController,
             decoration: InputDecoration(
-              hintText: 'e.g. Amoxicillin 500mg, Napa 500mg',
+              hintText: 'Pick from pharmacy or type a custom medicine',
               filled: true,
               fillColor: Colors.grey.shade50,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              suffixIcon: PopupMenuButton<String>(
+                tooltip: 'Pick from pharmacy stock',
+                icon: const Icon(Icons.local_pharmacy_outlined, color: BaustColors.primaryArmyGreen),
+                onSelected: (med) => setState(() => row.nameController.text = med),
+                itemBuilder: (_) => [
+                  for (final e in _stock.entries)
+                    PopupMenuItem(value: e.key, child: Text(e.value >= 0 ? '${e.key}  (${e.value} left)' : e.key)),
+                ],
+              ),
             ),
             validator: (val) {
               if (val == null || val.trim().isEmpty) {
                 return 'Medicine name required';
               }
               return null;
+            },
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: row.nameController,
+            builder: (context, value, _) {
+              final name = value.text.trim();
+              if (name.isEmpty) return const SizedBox.shrink();
+              final stocked = _isStocked(name);
+              return Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      stocked ? Icons.check_circle_outline : Icons.add_business_outlined,
+                      size: 14,
+                      color: stocked ? BaustColors.successGreen : Colors.orange.shade800,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        stocked
+                            ? 'In pharmacy stock'
+                            : (_unitsFor(name) == 0
+                                  ? 'Out of stock: will be sent to admin for pharmacy review'
+                                  : 'Custom medicine: will be sent to admin for pharmacy review'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: stocked ? BaustColors.successGreen : Colors.orange.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
 

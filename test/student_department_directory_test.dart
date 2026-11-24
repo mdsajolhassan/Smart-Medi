@@ -29,10 +29,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: StudentDepartmentDirectory(
-              studentsOverride: students,
-              onStudentSelected: onSelected ?? (_, _) {},
-            ),
+            child: StudentDepartmentDirectory(studentsOverride: students, onStudentSelected: onSelected ?? (_, _) {}),
           ),
         ),
       ),
@@ -41,34 +38,20 @@ void main() {
   }
 
   group('StudentDepartmentDirectory — Issue #3', () {
-    testWidgets('renders every canonical department as an ExpansionTile',
-        (tester) async {
+    testWidgets('renders every canonical department as an ExpansionTile', (tester) async {
       await pumpDirectory(tester, students: const []);
 
       // One accordion per canonical department.
-      expect(
-        find.byType(ExpansionTile),
-        findsNWidgets(canonicalDepartmentCount),
-      );
-      expect(
-        find.text('Computer Science & Engineering (CSE)'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Electrical & Electronic Engineering (EEE)'),
-        findsOneWidget,
-      );
+      expect(find.byType(ExpansionTile), findsNWidgets(canonicalDepartmentCount));
+      expect(find.text('Computer Science & Engineering (CSE)'), findsOneWidget);
+      expect(find.text('Electrical & Electronic Engineering (EEE)'), findsOneWidget);
     });
 
     testWidgets('places CSE first and expands it by default', (tester) async {
       await pumpDirectory(tester, students: const []);
 
-      final cseOffset = tester.getTopLeft(
-        find.text('Computer Science & Engineering (CSE)'),
-      );
-      final eeeOffset = tester.getTopLeft(
-        find.text('Electrical & Electronic Engineering (EEE)'),
-      );
+      final cseOffset = tester.getTopLeft(find.text('Computer Science & Engineering (CSE)'));
+      final eeeOffset = tester.getTopLeft(find.text('Electrical & Electronic Engineering (EEE)'));
 
       // CSE header sits above EEE header → CSE is first.
       expect(cseOffset.dy, lessThan(eeeOffset.dy));
@@ -78,41 +61,34 @@ void main() {
       expect(find.text('No students registered yet'), findsOneWidget);
     });
 
-    testWidgets('shows an empty state inside the expanded CSE department',
-        (tester) async {
+    testWidgets('shows an empty state inside the expanded CSE department', (tester) async {
       await pumpDirectory(tester, students: const []);
 
       expect(find.text('No students registered yet'), findsOneWidget);
-      expect(
-        find.text('Students will appear here upon onboarding completion.'),
-        findsOneWidget,
-      );
+      expect(find.text('Students will appear here upon onboarding completion.'), findsOneWidget);
       // Every department reports a zero count while empty.
       expect(find.text('0 registered students'), findsWidgets);
     });
 
-    testWidgets('groups students into their department and counts them',
-        (tester) async {
-      await pumpDirectory(tester, students: const [
-        {
-          'uid': 's1',
-          'displayName': 'Sajol Hassan',
-          'studentId': 'CSE-001',
-          'department': 'Computer Science & Engineering (CSE)',
-        },
-        {
-          'uid': 's2',
-          'displayName': 'Rahim Uddin',
-          'studentId': 'CSE-002',
-          'department': 'cse', // fuzzy value → normalized to CSE
-        },
-        {
-          'uid': 's3',
-          'displayName': 'Karim Ali',
-          'studentId': 'EEE-001',
-          'department': 'Electrical',
-        },
-      ]);
+    testWidgets('groups students into their department and counts them', (tester) async {
+      await pumpDirectory(
+        tester,
+        students: const [
+          {
+            'uid': 's1',
+            'displayName': 'Sajol Hassan',
+            'studentId': 'CSE-001',
+            'department': 'Computer Science & Engineering (CSE)',
+          },
+          {
+            'uid': 's2',
+            'displayName': 'Rahim Uddin',
+            'studentId': 'CSE-002',
+            'department': 'cse', // fuzzy value → normalized to CSE
+          },
+          {'uid': 's3', 'displayName': 'Karim Ali', 'studentId': 'EEE-001', 'department': 'Electrical'},
+        ],
+      );
 
       // Counts reflect normalized grouping: 2 in CSE, 1 in EEE.
       expect(find.text('2 registered students'), findsOneWidget);
@@ -125,8 +101,7 @@ void main() {
       expect(find.text('Karim Ali'), findsNothing);
     });
 
-    testWidgets('invokes onStudentSelected with the student uid on tap',
-        (tester) async {
+    testWidgets('invokes onStudentSelected with the student uid on tap', (tester) async {
       Map<String, dynamic>? tappedData;
       String? tappedUid;
 
@@ -153,8 +128,7 @@ void main() {
       expect(tappedData?['displayName'], 'Sajol Hassan');
     });
 
-    testWidgets('expanding a collapsed department reveals its empty state',
-        (tester) async {
+    testWidgets('expanding a collapsed department reveals its empty state', (tester) async {
       await pumpDirectory(tester, students: const []);
 
       // EEE starts collapsed → its body is absent.

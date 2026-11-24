@@ -5,27 +5,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'firebase_options.dart';
 import 'app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables (.env for Gemini API keys)
-  try {
-    await dotenv.load(fileName: '.env');
-    if (kDebugMode) {
-      debugPrint('[Env] Successfully loaded .env file');
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      debugPrint('[Env] Notice: .env file not loaded or empty: $e');
+  // Load .env (Gemini API keys) and initialise Firebase in parallel to cut startup time.
+  Future<void> loadEnv() async {
+    try {
+      await dotenv.load(fileName: '.env');
+      if (kDebugMode) {
+        debugPrint('[Env] Successfully loaded .env file');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Env] Notice: .env file not loaded or empty: $e');
+      }
     }
   }
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Future.wait([loadEnv(), Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)]);
 
   // Debug-only emulator connection: enabled via --dart-define=USE_EMULATORS=true
   // Strictly inactive in release builds due to kDebugMode guard.
@@ -36,9 +37,5 @@ Future<void> main() async {
     FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
   }
 
-  runApp(
-    const ProviderScope(
-      child: SmartMediApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: SmartMediApp()));
 }

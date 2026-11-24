@@ -210,145 +210,122 @@ class SmartMediDrawer extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 children: [
-                  _buildSectionLabel('OPERATIONAL NAVIGATION'),
+                  // Admins and the super admin never enter other roles' portals (privacy).
+                  if (!isAdmin) ...[
+                    _buildSectionLabel('OPERATIONAL NAVIGATION'),
 
-                  // 1. Role-Specific Primary Dashboard
-                  if (role == 'doctor' ||
-                      role == 'medical_officer' ||
-                      role == 'medical_assistant' ||
-                      role == 'nurse') ...[
-                    _buildNavTile(
-                      context,
-                      icon: Icons.local_hospital_outlined,
-                      title: 'Doctor Portal (SOS & Queue)',
-                      subtitle: 'Clinical consultations & active alerts',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
-                        );
-                      },
-                    ),
-                    _buildNavTile(
-                      context,
-                      icon: Icons.person_search_outlined,
-                      title: 'Student Directory & Search',
-                      subtitle: 'Browse by department or lookup ID',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientLookupScreen()));
-                      },
-                    ),
-                    _buildNavTile(
-                      context,
-                      icon: Icons.assignment_ind_outlined,
-                      title: 'Patient Check-In Log',
-                      subtitle: 'Physical clinic walk-ins & tracker',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
-                      },
-                    ),
-                    _buildNavTile(
-                      context,
-                      icon: Icons.medication_outlined,
-                      title: 'Pharmacy Inventory',
-                      subtitle: 'Medicine stock & multiplier dispense',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()));
-                      },
-                    ),
-                  ] else if (role == 'pharmacist') ...[
-                    _buildNavTile(
-                      context,
-                      icon: Icons.medication_outlined,
-                      title: 'Pharmacy Inventory',
-                      subtitle: 'Essential SKU stock & dispense',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                        );
-                      },
-                    ),
-                    _buildNavTile(
-                      context,
-                      icon: Icons.assignment_ind_outlined,
-                      title: 'Patient Check-In Log',
-                      subtitle: 'Daily clinic visit roster',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
-                      },
-                    ),
-                    _buildNavTile(
-                      context,
-                      icon: Icons.medical_services_outlined,
-                      title: 'Doctor Portal / SOS Monitor',
-                      subtitle: 'View live emergency consultations',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()));
-                      },
-                    ),
-                  ] else if (role == 'staff' || role == 'faculty') ...[
-                    _buildNavTile(
-                      context,
-                      icon: Icons.school_outlined,
-                      title: 'Faculty & Advisor Portal',
-                      subtitle: 'Department student cohorts & emergencies',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const StaffDashboardScreen()),
-                        );
-                      },
-                    ),
-                  ] else ...[
-                    // Student Default
-                    _buildNavTile(
-                      context,
-                      icon: Icons.touch_app_outlined,
-                      title: 'Emergency SOS & Home',
-                      subtitle: 'One-tap critical ambulance dispatch',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const MainDashboardScreen(initialTabIndex: 0)),
-                        );
-                      },
-                    ),
-                    _buildNavTile(
-                      context,
-                      icon: Icons.medical_information_outlined,
-                      title: 'My Medical History',
-                      subtitle: 'AI-extracted clinical records & timeline',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const MainDashboardScreen(initialTabIndex: 3)),
-                        );
-                      },
-                    ),
-                    _buildNavTile(
-                      context,
-                      icon: Icons.person_outline,
-                      title: 'Student Profile & Residency',
-                      subtitle: 'Hall, room & emergency contacts',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const MainDashboardScreen(initialTabIndex: 1)),
-                        );
-                      },
-                    ),
+                    // 1. Role-Specific Primary Dashboard
+                    if (role == 'doctor' ||
+                        role == 'medical_officer' ||
+                        role == 'medical_assistant' ||
+                        role == 'nurse') ...[
+                      _buildNavTile(
+                        context,
+                        icon: Icons.local_hospital_outlined,
+                        title: 'Doctor Portal (SOS & Queue)',
+                        subtitle: 'Clinical consultations & active alerts',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
+                          );
+                        },
+                      ),
+                      _buildNavTile(
+                        context,
+                        icon: Icons.person_search_outlined,
+                        title: 'Student Directory & Search',
+                        subtitle: 'Browse by department or lookup ID',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientLookupScreen()));
+                        },
+                      ),
+                      _buildNavTile(
+                        context,
+                        icon: Icons.assignment_ind_outlined,
+                        title: 'Patient Check-In Log',
+                        subtitle: 'Physical clinic walk-ins & tracker',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
+                        },
+                      ),
+                      _buildNavTile(
+                        context,
+                        icon: Icons.medication_outlined,
+                        title: 'Pharmacy Inventory',
+                        subtitle: 'Medicine stock & multiplier dispense',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()));
+                        },
+                      ),
+                    ] else if (role == 'pharmacist') ...[
+                      _buildNavTile(
+                        context,
+                        icon: Icons.medication_outlined,
+                        title: 'Pharmacy Inventory',
+                        subtitle: 'Medicines, expiry & stock',
+                        onTap: () => Navigator.pop(context),
+                      ),
+                    ] else if (role == 'staff' || role == 'faculty') ...[
+                      _buildNavTile(
+                        context,
+                        icon: Icons.school_outlined,
+                        title: 'Faculty & Advisor Portal',
+                        subtitle: 'Department student cohorts & emergencies',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const StaffDashboardScreen()),
+                          );
+                        },
+                      ),
+                    ] else ...[
+                      // Student Default
+                      _buildNavTile(
+                        context,
+                        icon: Icons.touch_app_outlined,
+                        title: 'Emergency SOS & Home',
+                        subtitle: 'One-tap critical ambulance dispatch',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const MainDashboardScreen(initialTabIndex: 0)),
+                          );
+                        },
+                      ),
+                      _buildNavTile(
+                        context,
+                        icon: Icons.medical_information_outlined,
+                        title: 'My Medical History',
+                        subtitle: 'AI-extracted clinical records & timeline',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const MainDashboardScreen(initialTabIndex: 3)),
+                          );
+                        },
+                      ),
+                      _buildNavTile(
+                        context,
+                        icon: Icons.person_outline,
+                        title: 'Student Profile & Residency',
+                        subtitle: 'Hall, room & emergency contacts',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const MainDashboardScreen(initialTabIndex: 1)),
+                          );
+                        },
+                      ),
+                    ],
                   ],
 
                   // Common Campus Utilities
@@ -362,16 +339,17 @@ class SmartMediDrawer extends ConsumerWidget {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
                     },
                   ),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.volunteer_activism_outlined,
-                    title: 'Campus Blood Bank',
-                    subtitle: 'Directory of voluntary student donors',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()));
-                    },
-                  ),
+                  if (!isAdmin)
+                    _buildNavTile(
+                      context,
+                      icon: Icons.volunteer_activism_outlined,
+                      title: 'Campus Blood Bank',
+                      subtitle: 'Directory of voluntary student donors',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()));
+                      },
+                    ),
 
                   const Divider(height: 24, thickness: 1),
 

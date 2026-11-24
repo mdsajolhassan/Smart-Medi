@@ -8,9 +8,6 @@ import '../../../../core/config/auth_config.dart';
 import '../../../../core/constants/baust_constants.dart';
 import '../../../../core/widgets/smart_medi_drawer.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
-import '../../../medical_operations/presentation/screens/doctor_dashboard_screen.dart';
-import '../../../medical_operations/presentation/screens/patient_checkin_log_screen.dart';
-import '../../../medical_operations/presentation/screens/pharmacist_inventory_screen.dart';
 
 class SuperAdminDashboard extends ConsumerStatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -29,9 +26,6 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
   String _accountSearchQuery = '';
   final TextEditingController _accountSearchController = TextEditingController();
 
-  StreamSubscription? _sosSubscription;
-  final List<Map<String, dynamic>> _activeEmergencyAlerts = [];
-
   // Accounts are loaded live from Firestore (no hard-coded people).
   late final List<Map<String, dynamic>> _systemAccounts;
 
@@ -40,129 +34,14 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
     super.initState();
     _systemAccounts = [];
 
-    _listenToEmergencyAlerts();
     _listenToFaculty();
   }
 
   @override
   void dispose() {
-    _sosSubscription?.cancel();
     _facultySubscription?.cancel();
     _accountSearchController.dispose();
     super.dispose();
-  }
-
-  void _listenToEmergencyAlerts() {
-    try {
-      _sosSubscription = FirebaseFirestore.instance
-          .collection(FirestoreCollections.emergencyAlerts)
-          .orderBy('triggeredAt', descending: true)
-          .snapshots()
-          .listen((snapshot) {
-            final List<Map<String, dynamic>> liveAlerts = [];
-            for (final doc in snapshot.docs) {
-              final data = doc.data();
-              final status = (data['status'] ?? 'TRIGGERED').toString();
-              if (status != 'RESOLVED') {
-                liveAlerts.add({
-                  'alertId': data['alertId'] ?? doc.id,
-                  'studentName': data['studentName'] ?? 'Unknown Student',
-                  'studentRoll': data['studentRoll'] ?? data['studentId'] ?? 'N/A',
-                  'department': data['department'] ?? 'General',
-                  'hall': data['hall'] ?? 'Campus Area',
-                  'room': data['roomNumber'] ?? 'N/A',
-                  'symptom': data['symptomCategory'] ?? 'Critical Emergency',
-                  'blood': 'B+',
-                  'time': 'Active',
-                  'status': status,
-                  'emergencyContact': data['emergencyContact'],
-                  'criticalFlags': List<String>.from(data['criticalFlags'] ?? []),
-                });
-              }
-            }
-
-            if (mounted && liveAlerts.isNotEmpty) {
-              setState(() {
-                _activeEmergencyAlerts.clear();
-                _activeEmergencyAlerts.addAll(liveAlerts);
-              });
-            }
-          }, onError: (_) {});
-    } catch (_) {
-      // Offline / unit test safe fallback
-    }
-  }
-
-  void _dispatchAmbulance(int index) {
-    if (index >= _activeEmergencyAlerts.length) return;
-    final alert = _activeEmergencyAlerts[index];
-
-    setState(() {
-      alert['status'] = 'AMBULANCE_DISPATCHED';
-    });
-
-    try {
-      final alertId = alert['alertId'];
-      FirebaseFirestore.instance.collection(FirestoreCollections.emergencyAlerts).doc(alertId).update({
-        'status': 'AMBULANCE_DISPATCHED',
-        'acknowledgedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (_) {}
-
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: BaustColors.successGreen,
-        content: Row(
-          children: [
-            const Icon(Icons.airport_shuttle, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'BAUST Ambulance dispatched to ${alert['hall']} (${alert['room']}) for ${alert['studentName']}!',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _simulateStudentSos() {
-    final newAlert = {
-      'alertId': 'sos_sim_${DateTime.now().millisecondsSinceEpoch}',
-      'studentName': 'Demo Student',
-      'studentRoll': '0802420205109001',
-      'department': 'Dept of CSE',
-      'hall': 'Abbas Uddin Ahmed Hall (AUAH)',
-      'room': '214',
-      'symptom': 'Severe Asthma Exacerbation / Acute Chest Pain',
-      'blood': 'B+',
-      'time': 'Just now',
-      'status': 'TRIGGERED',
-      'emergencyContact': 'Campus Emergency Roster',
-      'criticalFlags': ['Asthma History', 'Penicillin Allergy'],
-    };
-
-    setState(() {
-      _activeEmergencyAlerts.insert(0, newAlert);
-    });
-
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: BaustColors.emergencyRed,
-        content: Row(
-          children: [
-            Icon(Icons.warning, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text('[Test Tool] Simulated SOS triggered for Student Demo Student (0802420205109001)!'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   bool _isProvisioningFaculty = false;
@@ -646,11 +525,6 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Simulate Student SOS (Test Tool)',
-            icon: const Icon(Icons.notification_add_outlined, color: BaustColors.emergencyRed),
-            onPressed: _simulateStudentSos,
-          ),
-          IconButton(
             tooltip: 'Sign Out',
             icon: const Icon(Icons.logout_rounded),
             onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
@@ -737,106 +611,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
 
             const SizedBox(height: 16),
 
-            // Elevated Operational Portals Launcher
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.dashboard_customize, size: 18, color: BaustColors.primaryNavy),
-                      SizedBox(width: 8),
-                      Text(
-                        'Elevated Operations & Direct Portals',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: BaustColors.textDark),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                            side: BorderSide(color: BaustColors.emergencyRed.withValues(alpha: 0.5)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: const Icon(Icons.local_hospital, color: BaustColors.emergencyRed, size: 18),
-                          label: const Text(
-                            'Doctor / SOS',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: BaustColors.emergencyRed,
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()));
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                            side: BorderSide(color: BaustColors.primaryArmyGreen.withValues(alpha: 0.5)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: const Icon(Icons.medication, color: BaustColors.primaryArmyGreen, size: 18),
-                          label: const Text(
-                            'Pharmacy',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: BaustColors.primaryArmyGreen,
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                            side: BorderSide(color: BaustColors.primaryNavy.withValues(alpha: 0.5)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: const Icon(Icons.assignment_ind, color: BaustColors.primaryNavy, size: 18),
-                          label: const Text(
-                            'Check-in Log',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.primaryNavy),
-                          ),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
             const SizedBox(height: 20),
-
-            // LIVE EMERGENCY SOS QUEUE & TESTING MONITOR (Task 3)
-            _buildLiveSosTestingQueueSection(),
-
-            const SizedBox(height: 24),
 
             // PENDING ACCOUNTS & STAFF APPROVAL
             _buildPendingAccountsSection(),
@@ -866,183 +641,6 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
         onPressed: _openAddFacultyModal,
         icon: const Icon(Icons.person_add_alt_1),
         label: const Text('Add Faculty'),
-      ),
-    );
-  }
-
-  Widget _buildLiveSosTestingQueueSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: BaustColors.emergencyRed.withValues(alpha: 0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: BaustColors.emergencyRed.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.emergency, color: BaustColors.emergencyRed, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'LIVE EMERGENCY SOS TESTING MONITOR',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                      color: BaustColors.emergencyRed,
-                    ),
-                  ),
-                ],
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: BaustColors.emergencyRed,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  elevation: 0,
-                ),
-                icon: const Icon(Icons.add_alert, size: 14),
-                label: const Text(
-                  'Simulate SOS (Test Tool)',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-                onPressed: _simulateStudentSos,
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Inspect incoming campus distress alerts triggered from student accounts with room & hall coordinates.',
-            style: TextStyle(fontSize: 11, color: BaustColors.textMuted),
-          ),
-          const SizedBox(height: 14),
-
-          if (_activeEmergencyAlerts.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Center(
-                child: Text(
-                  'No active emergency SOS alerts currently in queue.',
-                  style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
-                ),
-              ),
-            )
-          else
-            ..._activeEmergencyAlerts.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final alert = entry.value;
-              final isDispatched = alert['status'] == 'AMBULANCE_DISPATCHED';
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isDispatched ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDispatched ? BaustColors.successGreen.withValues(alpha: 0.4) : Colors.red.shade300,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${alert['studentName']} (${alert['studentRoll']})',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: BaustColors.textDark,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: isDispatched ? BaustColors.successGreen : BaustColors.emergencyRed,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            isDispatched ? 'AMBULANCE ON ROUTE' : 'TRIGGERED',
-                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Location: ${alert['hall']} • Room ${alert['room']}',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: BaustColors.primaryNavy),
-                    ),
-                    Text('Symptom: ${alert['symptom']}', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isDispatched ? BaustColors.successGreen : BaustColors.emergencyRed,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            icon: Icon(isDispatched ? Icons.check : Icons.airport_shuttle, size: 16),
-                            label: Text(
-                              isDispatched ? 'AMBULANCE DISPATCHED' : 'DISPATCH AMBULANCE',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: isDispatched ? null : () => _dispatchAmbulance(idx),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: BaustColors.primaryNavy,
-                            side: const BorderSide(color: BaustColors.primaryNavy),
-                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.open_in_new, size: 14),
-                          label: const Text(
-                            'Doctor Portal',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()));
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }),
-        ],
       ),
     );
   }
@@ -1177,7 +775,6 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
               final isSuperAdmin = acc['isSuperAdmin'] == true || role == 'superadmin';
               final isStudent = role == 'student';
               final isDoctor = role == 'doctor';
-              final isPharmacy = role == 'pharmacist';
               final email = acc['email']?.toString();
               final hasEmail = email != null && email.trim().isNotEmpty;
               final phone = acc['phone']?.toString();
@@ -1370,42 +967,6 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                               ),
                             ],
                           ),
-                          if (isDoctor)
-                            TextButton.icon(
-                              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                              icon: const Icon(Icons.open_in_new, size: 14, color: BaustColors.emergencyRed),
-                              label: const Text(
-                                'Doctor Portal',
-                                style: TextStyle(fontSize: 11, color: BaustColors.emergencyRed),
-                              ),
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
-                              ),
-                            )
-                          else if (isPharmacy)
-                            TextButton.icon(
-                              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                              icon: const Icon(Icons.open_in_new, size: 14, color: BaustColors.primaryArmyGreen),
-                              label: const Text(
-                                'Inventory',
-                                style: TextStyle(fontSize: 11, color: BaustColors.primaryArmyGreen),
-                              ),
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                              ),
-                            )
-                          else if (isStudent)
-                            TextButton.icon(
-                              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                              icon: const Icon(Icons.notification_add, size: 14, color: BaustColors.emergencyRed),
-                              label: const Text(
-                                'Test SOS (Test Tool)',
-                                style: TextStyle(fontSize: 11, color: BaustColors.emergencyRed),
-                              ),
-                              onPressed: _simulateStudentSos,
-                            ),
                         ],
                       ),
                     ],

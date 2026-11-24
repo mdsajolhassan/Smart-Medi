@@ -51,7 +51,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
 
   static String roleOf(Map<String, dynamic> u) {
     final r = (u['role'] ?? 'student').toString();
-    if (const {'medical_officer', 'medical_assistant', 'nurse', 'pharmacist'}.contains(r)) return 'doctor';
+    if (const {'medical_officer', 'medical_assistant', 'nurse'}.contains(r)) return 'doctor';
     return r;
   }
 
@@ -171,6 +171,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
   static String _label(String role) => switch (role) {
     'student' => 'Student',
     'doctor' => 'Doctor',
+    'pharmacist' => 'Pharmacist',
     'admin' => 'Admin',
     'superadmin' => 'Super Admin',
     _ => role,
@@ -179,6 +180,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
   static Color _roleColor(String role) => switch (role) {
     'student' => const Color(0xFF0EA5E9),
     'doctor' => const Color(0xFF10B981),
+    'pharmacist' => const Color(0xFF0D9488),
     'admin' => const Color(0xFFF59E0B),
     'superadmin' => const Color(0xFFE11D48),
     _ => BaustColors.textMuted,
@@ -238,7 +240,15 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              for (final f in const ['all', 'student', 'doctor', 'admin', 'superadmin', 'removed'])
+                              for (final f in const [
+                                'all',
+                                'student',
+                                'doctor',
+                                'pharmacist',
+                                'admin',
+                                'superadmin',
+                                'removed',
+                              ])
                                 Padding(
                                   padding: const EdgeInsets.only(right: 8),
                                   child: ChoiceChip(

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 
 // UI State for the SOS workflow
@@ -11,19 +12,11 @@ class SosState {
   final String? activeAlertId;
   final String? errorMessage;
 
-  const SosState({
-    required this.status,
-    this.activeAlertId,
-    this.errorMessage,
-  });
+  const SosState({required this.status, this.activeAlertId, this.errorMessage});
 
   factory SosState.initial() => const SosState(status: SosStatus.idle);
 
-  SosState copyWith({
-    SosStatus? status,
-    String? activeAlertId,
-    String? errorMessage,
-  }) {
+  SosState copyWith({SosStatus? status, String? activeAlertId, String? errorMessage}) {
     return SosState(
       status: status ?? this.status,
       activeAlertId: activeAlertId ?? this.activeAlertId,
@@ -64,20 +57,13 @@ class SosNotifier extends Notifier<SosState> {
       String effectiveStudentName = (studentName != null && studentName.trim().isNotEmpty)
           ? studentName.trim()
           : (user?.displayName ?? 'Student (${user?.phoneNumber ?? "Emergency Caller"})');
-      String effectiveStudentRoll = (studentRoll != null && studentRoll.trim().isNotEmpty)
-          ? studentRoll.trim()
-          : 'N/A';
+      String effectiveStudentRoll = (studentRoll != null && studentRoll.trim().isNotEmpty) ? studentRoll.trim() : 'N/A';
       String advisorId = 'unassigned';
-      String effectiveDepartment = (department != null && department.trim().isNotEmpty)
-          ? department.trim()
-          : 'General';
+      String effectiveDepartment = (department != null && department.trim().isNotEmpty) ? department.trim() : 'General';
       List<String> criticalFlags = [];
 
       try {
-        final studentDoc = await _firestore
-            .collection(FirestoreCollections.students)
-            .doc(studentUid)
-            .get();
+        final studentDoc = await _firestore.collection(FirestoreCollections.students).doc(studentUid).get();
 
         if (studentDoc.exists && studentDoc.data() != null) {
           final data = studentDoc.data()!;
@@ -91,10 +77,7 @@ class SosNotifier extends Notifier<SosState> {
           criticalFlags = List<String>.from(data['criticalFlags'] ?? []);
         }
 
-        final userDoc = await _firestore
-            .collection(FirestoreCollections.users)
-            .doc(studentUid)
-            .get();
+        final userDoc = await _firestore.collection(FirestoreCollections.users).doc(studentUid).get();
 
         if (userDoc.exists && userDoc.data() != null) {
           final uData = userDoc.data()!;
@@ -115,10 +98,7 @@ class SosNotifier extends Notifier<SosState> {
       // Fetch emergency contact snapshot so doctors receive contact info without needing read access to emergency_contacts
       Map<String, dynamic>? emergencyContactSnapshot;
       try {
-        final contactDoc = await _firestore
-            .collection('emergency_contacts')
-            .doc(studentUid)
-            .get();
+        final contactDoc = await _firestore.collection('emergency_contacts').doc(studentUid).get();
         if (contactDoc.exists && contactDoc.data() != null) {
           final cData = contactDoc.data()!;
           emergencyContactSnapshot = {
@@ -129,6 +109,36 @@ class SosNotifier extends Notifier<SosState> {
         }
       } catch (_) {
         // Non-blocking fallback if contact doc is missing or unreadable
+      }
+
+      // One patient = one active SOS. A repeat press within a few minutes of an
+      // alert no doctor has acted on yet updates that alert (new symptom,
+      // location, note) instead of creating a duplicate. Anything older or
+      // already handled gets a fresh alert so no emergency is ever dropped.
+      try {
+        final existing = await _firestore
+            .collection(FirestoreCollections.emergencyAlerts)
+            .where('studentId', isEqualTo: studentUid)
+            .get();
+        final cutoff = DateTime.now().subtract(const Duration(minutes: 15));
+        for (final doc in existing.docs) {
+          final d = doc.data();
+          final ts = d['triggeredAt'];
+          final recent = ts is Timestamp && ts.toDate().isAfter(cutoff);
+          if ((d['status'] ?? 'TRIGGERED').toString() == 'TRIGGERED' && recent) {
+            await doc.reference.update({
+              'hall': residentialHall,
+              'roomNumber': roomNumber.trim().isEmpty ? 'Not Provided' : roomNumber.trim(),
+              'symptomCategory': symptomCategory,
+              'optionalNote': optionalNote?.trim() ?? '',
+              'triggeredAt': FieldValue.serverTimestamp(),
+            });
+            state = state.copyWith(status: SosStatus.triggered, activeAlertId: doc.id);
+            return;
+          }
+        }
+      } catch (_) {
+        // If the check/update fails, still send a new SOS — never block an emergency.
       }
 
       // 2. Create high-priority document in emergency_alerts
@@ -156,15 +166,9 @@ class SosNotifier extends Notifier<SosState> {
 
       await alertDocRef.set(payload);
 
-      state = state.copyWith(
-        status: SosStatus.triggered,
-        activeAlertId: alertDocRef.id,
-      );
+      state = state.copyWith(status: SosStatus.triggered, activeAlertId: alertDocRef.id);
     } catch (e) {
-      state = state.copyWith(
-        status: SosStatus.failed,
-        errorMessage: 'Failed to dispatch SOS alert: $e',
-      );
+      state = state.copyWith(status: SosStatus.failed, errorMessage: 'Failed to dispatch SOS alert: $e');
     }
   }
 

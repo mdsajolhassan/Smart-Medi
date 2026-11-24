@@ -14,6 +14,8 @@ import '../controllers/patient_checkin_controller.dart';
 import 'patient_checkin_log_screen.dart';
 import 'patient_lookup_screen.dart';
 import 'pharmacist_inventory_screen.dart';
+import '../../../../features/admin_portal/presentation/screens/feedback_screens.dart';
+import '../../../../core/widgets/animations.dart';
 
 enum DoctorStatus { available, inConsultation, emergencyDuty, offDuty }
 
@@ -59,10 +61,13 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           .snapshots()
           .listen((snapshot) {
             final List<Map<String, dynamic>> liveAlerts = [];
+            final seenPatients = <String>{};
             for (final doc in snapshot.docs) {
               final data = doc.data();
               final status = (data['status'] ?? 'TRIGGERED').toString();
-              if (status != 'RESOLVED') {
+              final patientKey = (data['studentId'] ?? data['studentRoll'] ?? doc.id).toString();
+              // One patient = one SOS card (newest wins).
+              if (status != 'RESOLVED' && seenPatients.add(patientKey)) {
                 final triggeredAt = data['triggeredAt'];
                 String timeDisplay = 'Just now';
                 if (triggeredAt is Timestamp) {
@@ -78,6 +83,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
 
                 liveAlerts.add({
                   'alertId': data['alertId'] ?? doc.id,
+                  'studentUid': data['studentId'],
                   'studentName': data['studentName'] ?? 'Unknown Student',
                   'roll': data['studentRoll'] ?? data['studentId'] ?? 'N/A',
                   'department': data['department'] ?? 'General',
@@ -147,12 +153,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
       _activeEmergencyAlerts.removeAt(index);
     });
 
-    try {
-      FirebaseFirestore.instance.collection(FirestoreCollections.emergencyAlerts).doc(alertId).update({
-        'status': 'RESOLVED',
-        'resolvedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (_) {}
+    _closeAlertsFor(alertId?.toString(), alert['studentUid']?.toString());
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -162,14 +163,32 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     );
   }
 
-  void _logAlertToCheckIn(int index) {
+  /// Marks this alert and any other open alerts for the same patient as resolved,
+  /// so older hidden alerts don't pop up again after resolving.
+  Future<void> _closeAlertsFor(String? alertId, String? studentUid) async {
+    final col = FirebaseFirestore.instance.collection(FirestoreCollections.emergencyAlerts);
+    final update = {'status': 'RESOLVED', 'resolvedAt': FieldValue.serverTimestamp()};
+    try {
+      if (alertId != null && alertId.isNotEmpty) await col.doc(alertId).update(update);
+      if (studentUid != null && studentUid.isNotEmpty) {
+        final open = await col.where('studentId', isEqualTo: studentUid).get();
+        for (final doc in open.docs) {
+          if ((doc.data()['status'] ?? '').toString() != 'RESOLVED') await doc.reference.update(update);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _logAlertToCheckIn(int index) async {
     final alert = _activeEmergencyAlerts[index];
+    final alertId = (alert['alertId'] ?? '').toString();
     final user = ref.read(authControllerProvider).userProfile;
     final staffInfo = '${user?.displayName ?? "Medical Doctor"} (${user?.designation ?? "Doctor"})';
 
-    ref
+    final logged = await ref
         .read(patientCheckInProvider.notifier)
         .logFromEmergencyAlert(
+          alertId: alertId,
           studentId: alert['roll'] ?? 'N/A',
           studentName: alert['studentName'] ?? 'Unknown Student',
           symptom: alert['symptom'] ?? 'Critical Emergency',
@@ -178,15 +197,22 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           room: alert['room'],
         );
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: BaustColors.successGreen,
+        backgroundColor: logged ? BaustColors.successGreen : BaustColors.primaryNavy,
         content: Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.white),
+            Icon(logged ? Icons.check_circle : Icons.info_outline, color: Colors.white),
             const SizedBox(width: 8),
-            Expanded(child: Text('Documented in Medical Center Staff Log for ${alert['studentName']}')),
+            Expanded(
+              child: Text(
+                logged
+                    ? 'Documented in Medical Center Staff Log for ${alert['studentName']}'
+                    : 'Already documented in the check-in log for ${alert['studentName']}',
+              ),
+            ),
           ],
         ),
       ),
@@ -194,6 +220,17 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   }
 
   void _simulateIncomingSos() {
+    const demoRoll = '0802420205109001';
+    if (_activeEmergencyAlerts.any((a) => a['roll'] == demoRoll)) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: BaustColors.primaryNavy,
+          content: Text('Demo Student already has an active SOS alert. Resolve it first.'),
+        ),
+      );
+      return;
+    }
     final newAlert = {
       'alertId': 'sos_sim_${DateTime.now().millisecondsSinceEpoch}',
       'studentName': 'Demo Student',
@@ -870,6 +907,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
             icon: const Icon(Icons.notification_add_outlined),
             onPressed: _simulateIncomingSos,
           ),
+          const FeedbackIconButton(),
           IconButton(
             tooltip: 'Sign Out',
             icon: const Icon(Icons.logout_rounded),
@@ -1368,6 +1406,8 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
 
   Widget _buildEmergencySection() {
     final alertCount = _activeEmergencyAlerts.length;
+    // Rebuild when the check-in log changes so "Documented" state stays in sync.
+    ref.watch(patientCheckInProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1428,159 +1468,177 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
             final idx = entry.key;
             final alert = entry.value;
             final isDispatched = alert['status'] == 'AMBULANCE_DISPATCHED';
+            final isDocumented = ref
+                .read(patientCheckInProvider.notifier)
+                .isAlertDocumented((alert['alertId'] ?? '').toString());
 
-            return Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: BaustColors.emergencyRed, width: 2),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            return FadeSlideIn(
+              key: ValueKey('sos_${alert['alertId']}'),
+              index: idx,
+              child: PulseGlow(
+                color: BaustColors.emergencyRed,
+                active: !isDispatched,
+                child: Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: BaustColors.emergencyRed, width: 2),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.red.shade100,
-                          child: const Icon(Icons.warning, color: BaustColors.emergencyRed),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                alert['studentName'],
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Colors.red.shade100,
+                              child: const Icon(Icons.warning, color: BaustColors.emergencyRed),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    alert['studentName'],
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                  Text(
+                                    (alert['hall'] as String).toLowerCase().contains('non-resident')
+                                        ? 'Roll: ${alert['roll']} • Address: ${alert['hall']} (${alert['room']})'
+                                        : 'Roll: ${alert['roll']} • Hall: ${alert['hall']}, Room ${alert['room']}',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                (alert['hall'] as String).toLowerCase().contains('non-resident')
-                                    ? 'Roll: ${alert['roll']} • Address: ${alert['hall']} (${alert['room']})'
-                                    : 'Roll: ${alert['roll']} • Hall: ${alert['hall']}, Room ${alert['room']}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(6),
                               ),
-                            ],
-                          ),
+                              child: Text(
+                                alert['blood'],
+                                style: const TextStyle(color: BaustColors.emergencyRed, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
-                          child: Text(
-                            alert['blood'],
-                            style: const TextStyle(color: BaustColors.emergencyRed, fontWeight: FontWeight.bold),
+                        const Divider(height: 18),
+                        Text(
+                          'Reported Symptom: ${alert['symptom']}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        if (alert['optionalNote'] != null && (alert['optionalNote'] as String).isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Emergency Note: ${alert['optionalNote']}',
+                            style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.red.shade900),
                           ),
+                        ],
+                        if (alert['emergencyContact'] != null && alert['emergencyContact'] is Map) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Contact: ${alert['emergencyContact']['name']} (${alert['emergencyContact']['relationship']}) - ${alert['emergencyContact']['phone']}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: BaustColors.emergencyRed,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          children: (alert['criticalFlags'] as List).map<Widget>((flag) {
+                            return Chip(
+                              visualDensity: VisualDensity.compact,
+                              backgroundColor: Colors.amber.shade100,
+                              label: Text(
+                                flag.toString(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.brown.shade900,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isDispatched ? BaustColors.successGreen : BaustColors.emergencyRed,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: Icon(isDispatched ? Icons.check : Icons.airport_shuttle),
+                                label: Text(
+                                  isDispatched ? 'AMBULANCE ON ROUTE' : 'DISPATCH AMBULANCE',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: isDispatched ? null : () => _dispatchAmbulance(idx),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: BaustColors.textDark,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () => _resolveAlert(idx),
+                              child: const Text('Resolve', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: BaustColors.primaryArmyGreen,
+                                  side: const BorderSide(color: BaustColors.primaryArmyGreen),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: const Icon(Icons.note_alt_outlined, size: 15),
+                                label: const Text(
+                                  'Grant Sick Leave',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: () => _showGrantSickLeaveSheet(
+                                  initialName: alert['studentName'],
+                                  initialRoll: alert['roll'],
+                                  initialDiagnosis: alert['symptom'],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: BaustColors.primaryNavy,
+                                  side: const BorderSide(color: BaustColors.primaryNavy),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: Icon(isDocumented ? Icons.check : Icons.assignment_ind_outlined, size: 15),
+                                label: Text(
+                                  isDocumented ? 'Documented' : 'Document Check-In',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: isDocumented ? null : () => _logAlertToCheckIn(idx),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const Divider(height: 18),
-                    Text(
-                      'Reported Symptom: ${alert['symptom']}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    if (alert['optionalNote'] != null && (alert['optionalNote'] as String).isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Emergency Note: ${alert['optionalNote']}',
-                        style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.red.shade900),
-                      ),
-                    ],
-                    if (alert['emergencyContact'] != null && alert['emergencyContact'] is Map) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Contact: ${alert['emergencyContact']['name']} (${alert['emergencyContact']['relationship']}) - ${alert['emergencyContact']['phone']}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: BaustColors.emergencyRed,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      children: (alert['criticalFlags'] as List).map<Widget>((flag) {
-                        return Chip(
-                          visualDensity: VisualDensity.compact,
-                          backgroundColor: Colors.amber.shade100,
-                          label: Text(
-                            flag.toString(),
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.brown.shade900),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isDispatched ? BaustColors.successGreen : BaustColors.emergencyRed,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            icon: Icon(isDispatched ? Icons.check : Icons.airport_shuttle),
-                            label: Text(
-                              isDispatched ? 'AMBULANCE ON ROUTE' : 'DISPATCH AMBULANCE',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: isDispatched ? null : () => _dispatchAmbulance(idx),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: BaustColors.textDark,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: () => _resolveAlert(idx),
-                          child: const Text('Resolve', style: TextStyle(fontSize: 12)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: BaustColors.primaryArmyGreen,
-                              side: const BorderSide(color: BaustColors.primaryArmyGreen),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            icon: const Icon(Icons.note_alt_outlined, size: 15),
-                            label: const Text(
-                              'Grant Sick Leave',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: () => _showGrantSickLeaveSheet(
-                              initialName: alert['studentName'],
-                              initialRoll: alert['roll'],
-                              initialDiagnosis: alert['symptom'],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: BaustColors.primaryNavy,
-                              side: const BorderSide(color: BaustColors.primaryNavy),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            icon: const Icon(Icons.assignment_ind_outlined, size: 15),
-                            label: const Text(
-                              'Document Check-In',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: () => _logAlertToCheckIn(idx),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
             );

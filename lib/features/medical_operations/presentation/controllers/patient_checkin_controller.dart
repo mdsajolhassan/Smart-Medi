@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../data/models/patient_checkin_model.dart';
 
@@ -25,10 +26,8 @@ class PatientCheckInNotifier extends Notifier<List<PatientCheckIn>> {
           .orderBy('arrivalTime', descending: true)
           .snapshots()
           .listen((snapshot) {
-        state = snapshot.docs
-            .map((doc) => PatientCheckIn.fromFirestore(doc.id, doc.data()))
-            .toList();
-      });
+            state = snapshot.docs.map((doc) => PatientCheckIn.fromFirestore(doc.id, doc.data())).toList();
+          });
     } catch (_) {
       // Non-blocking in offline / test environments
     }
@@ -43,9 +42,12 @@ class PatientCheckInNotifier extends Notifier<List<PatientCheckIn>> {
     String? status,
     String? department,
     DateTime? arrivalTime,
+    String? id,
   }) async {
     final entryTime = arrivalTime ?? DateTime.now();
-    final newId = 'chk_${entryTime.millisecondsSinceEpoch}';
+    final newId = id ?? 'chk_${entryTime.millisecondsSinceEpoch}';
+    // Never log the same entry twice (e.g. repeated button taps).
+    if (state.any((c) => c.id == newId)) return;
 
     final checkIn = PatientCheckIn(
       id: newId,
@@ -73,7 +75,14 @@ class PatientCheckInNotifier extends Notifier<List<PatientCheckIn>> {
     }
   }
 
-  Future<void> logFromEmergencyAlert({
+  /// Whether an SOS alert has already been documented in the check-in log.
+  bool isAlertDocumented(String alertId) => state.any((c) => c.id == _alertCheckInId(alertId));
+
+  String _alertCheckInId(String alertId) => 'chk_sos_$alertId';
+
+  /// Returns false if this alert was already documented.
+  Future<bool> logFromEmergencyAlert({
+    required String alertId,
     required String studentId,
     required String studentName,
     required String symptom,
@@ -81,8 +90,10 @@ class PatientCheckInNotifier extends Notifier<List<PatientCheckIn>> {
     String? hall,
     String? room,
   }) async {
+    if (isAlertDocumented(alertId)) return false;
     final locationInfo = (hall != null && room != null) ? 'Location: $hall, Room $room. ' : '';
     await addCheckIn(
+      id: _alertCheckInId(alertId),
       studentId: studentId,
       studentName: studentName,
       purpose: 'Emergency SOS: $symptom',
@@ -90,8 +101,10 @@ class PatientCheckInNotifier extends Notifier<List<PatientCheckIn>> {
       status: 'Emergency Processed',
       notes: '${locationInfo}Emergency alert processed and documented at BAUST Medical Center.',
     );
+    return true;
   }
 }
 
-final patientCheckInProvider =
-    NotifierProvider<PatientCheckInNotifier, List<PatientCheckIn>>(PatientCheckInNotifier.new);
+final patientCheckInProvider = NotifierProvider<PatientCheckInNotifier, List<PatientCheckIn>>(
+  PatientCheckInNotifier.new,
+);

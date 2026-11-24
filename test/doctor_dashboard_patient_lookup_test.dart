@@ -24,13 +24,12 @@ void main() {
     verificationStatus: 'verified',
   );
 
-  final doctorAuthState = AuthState(
-    status: AuthStatus.authenticated,
-    userProfile: testDoctorProfile,
-  );
+  final doctorAuthState = AuthState(status: AuthStatus.authenticated, userProfile: testDoctorProfile);
 
   group('Doctor Dashboard — Patient Lookup & History Widget Tests', () {
-    testWidgets('1. PatientLookupScreen renders found student result card with unverified blood group chip', (tester) async {
+    testWidgets('1. PatientLookupScreen renders found student result card with unverified blood group chip', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -51,9 +50,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState)),
-          ],
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState))],
           child: MaterialApp(
             home: PatientLookupScreen(
               onSearchOverride: (query) async {
@@ -70,7 +67,10 @@ void main() {
 
       // Verify Initial Idle State
       expect(find.text('Ready for Patient Lookup'), findsOneWidget);
-      expect(find.text('Enter a Student ID or Roll number above to look up patient details and medical history.'), findsOneWidget);
+      expect(
+        find.text('Enter a Student ID or Roll number above to look up patient details and medical history.'),
+        findsOneWidget,
+      );
 
       // Enter student ID and search
       await tester.enterText(find.byType(TextField), '0802420205101137');
@@ -89,21 +89,17 @@ void main() {
       expect(find.widgetWithText(ElevatedButton, 'View Patient Medical History'), findsOneWidget);
     });
 
-    testWidgets('2. PatientLookupScreen renders "No student found with this ID" when student does not exist', (tester) async {
+    testWidgets('2. PatientLookupScreen renders "No student found with this ID" when student does not exist', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState)),
-          ],
-          child: MaterialApp(
-            home: PatientLookupScreen(
-              onSearchOverride: (query) async => [],
-            ),
-          ),
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState))],
+          child: MaterialApp(home: PatientLookupScreen(onSearchOverride: (query) async => [])),
         ),
       );
       await tester.pumpAndSettle();
@@ -113,7 +109,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No student found with this ID'), findsOneWidget);
-      expect(find.text('Ensure the student roll number is entered correctly without letters or spaces.'), findsOneWidget);
+      expect(
+        find.text('Ensure the student roll number is entered correctly without letters or spaces.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('3. PatientLookupScreen renders friendly error message when query fails', (tester) async {
@@ -123,9 +122,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState)),
-          ],
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState))],
           child: MaterialApp(
             home: PatientLookupScreen(
               onSearchOverride: (query) async {
@@ -147,7 +144,9 @@ void main() {
       );
     });
 
-    testWidgets('4. DetailedMedicalHistoryScreen in doctor mode shows top red allergy banner and unverified labels', (tester) async {
+    testWidgets('4. DetailedMedicalHistoryScreen in doctor mode shows top red allergy banner and unverified labels', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -165,11 +164,7 @@ void main() {
       final medicalHistoryData = {
         'knownAllergies': ['Penicillin Allergy', 'Dust Allergy'],
         'procedures': [
-          {
-            'name': 'Appendectomy',
-            'date': '10 Jan 2023',
-            'facility': 'BAUST CMH',
-          },
+          {'name': 'Appendectomy', 'date': '10 Jan 2023', 'facility': 'BAUST CMH'},
         ],
         'prescriptions': [
           {
@@ -184,9 +179,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState)),
-          ],
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState))],
           child: MaterialApp(
             home: DetailedMedicalHistoryScreen(
               isDoctorView: true,
@@ -213,56 +206,62 @@ void main() {
       expect(find.byIcon(Icons.emergency_outlined), findsNothing);
     });
 
-    testWidgets('5. DetailedMedicalHistoryScreen in doctor mode displays fallback for missing allergies and empty history state', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets(
+      '5. DetailedMedicalHistoryScreen in doctor mode displays fallback for missing allergies and empty history state',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      final studentProfileWithoutHistory = {
-        'displayName': 'Tanvir Rahman',
-        'studentRoll': '210401050',
-        'department': 'CSE',
-        'bloodGroup': 'A+',
-      };
+        final studentProfileWithoutHistory = {
+          'displayName': 'Tanvir Rahman',
+          'studentRoll': '210401050',
+          'department': 'CSE',
+          'bloodGroup': 'A+',
+        };
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState)),
-          ],
-          child: MaterialApp(
-            home: DetailedMedicalHistoryScreen(
-              isDoctorView: true,
-              patientProfile: studentProfileWithoutHistory,
-              initialData: const {},
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState))],
+            child: MaterialApp(
+              home: DetailedMedicalHistoryScreen(
+                isDoctorView: true,
+                patientProfile: studentProfileWithoutHistory,
+                initialData: const {},
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      // Verify fallback allergy banner
-      expect(find.text('CRITICAL MEDICAL ALERT — KNOWN ALLERGIES'), findsOneWidget);
-      expect(find.text('Known allergies: Not found - confirm with patient'), findsOneWidget);
+        // Verify fallback allergy banner
+        expect(find.text('CRITICAL MEDICAL ALERT — KNOWN ALLERGIES'), findsOneWidget);
+        expect(find.text('Known allergies: Not found - confirm with patient'), findsOneWidget);
 
-      // Verify exact empty history state text
-      expect(find.text('This student has not uploaded a medical history yet.'), findsOneWidget);
-      expect(find.text('No medical documents or prescriptions have been submitted by this student.'), findsOneWidget);
-    });
+        // Verify exact empty history state text
+        // Grouped doctor view: empty "recent upload" section is shown up front
+        expect(find.text('This student has not uploaded any medical documents yet.'), findsOneWidget);
+        expect(find.text('No digital prescriptions issued yet for this student.'), findsOneWidget);
 
-    testWidgets('6. DoctorDashboardScreen displays Patient Lookup action button and opens lookup screen', (tester) async {
+        // Full timeline is collapsed by default; expanding it shows the empty-history state
+        await tester.tap(find.textContaining('FULL CLINICAL TIMELINE'));
+        await tester.pumpAndSettle();
+        expect(find.text('This student has not uploaded a medical history yet.'), findsOneWidget);
+        expect(find.text('No medical documents or prescriptions have been submitted by this student.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('6. DoctorDashboardScreen displays Patient Lookup action button and opens lookup screen', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState)),
-          ],
-          child: const MaterialApp(
-            home: DoctorDashboardScreen(),
-          ),
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorAuthState))],
+          child: const MaterialApp(home: DoctorDashboardScreen()),
         ),
       );
       await tester.pumpAndSettle();

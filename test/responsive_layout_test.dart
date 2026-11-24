@@ -35,7 +35,13 @@ const _student = UserProfile(
 const _super = UserProfile(uid: 'sa', email: 'super@baust.edu.bd', displayName: 'Super Admin', role: 'superadmin');
 
 final _users = [
-  {'uid': 's1', 'displayName': 'MD. Sajol Hassan', 'email': 'sajol@baust.edu.bd', 'role': 'student', 'studentRoll': '0802420205101137'},
+  {
+    'uid': 's1',
+    'displayName': 'MD. Sajol Hassan',
+    'email': 'sajol@baust.edu.bd',
+    'role': 'student',
+    'studentRoll': '0802420205101137',
+  },
   {'uid': 'd1', 'displayName': 'Dr. Fowzia Jahan', 'email': 'doctor@baust.edu.bd', 'role': 'doctor'},
 ];
 
@@ -54,14 +60,16 @@ void main() {
         tester.view.physicalSize = size.value;
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
-        await tester.pumpWidget(ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(
-              () => _MockAuthNotifier(AuthState(status: AuthStatus.authenticated, userProfile: screen.value.$1)),
-            ),
-          ],
-          child: MaterialApp(theme: AppTheme.light(), home: screen.value.$2()),
-        ));
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authControllerProvider.overrideWith(
+                () => _MockAuthNotifier(AuthState(status: AuthStatus.authenticated, userProfile: screen.value.$1)),
+              ),
+            ],
+            child: MaterialApp(theme: AppTheme.light(), home: screen.value.$2()),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
       });

@@ -13,6 +13,7 @@ import '../../../medical_onboarding_ai/data/services/gemini_ai_service.dart';
 import '../../../profile/presentation/screens/edit_profile_screen.dart';
 import '../controllers/auth_controller.dart';
 import '../../../../core/widgets/responsive.dart';
+import '../../../../features/admin_portal/presentation/screens/feedback_screens.dart';
 
 /// Max encoded photo size stored in Firestore (doc limit is 1 MiB).
 const int kMaxIdPhotoBytes = 650 * 1024;
@@ -216,6 +217,7 @@ class _StudentIdVerificationScreenState extends ConsumerState<StudentIdVerificat
             icon: const Icon(Icons.manage_accounts_rounded),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())),
           ),
+          const FeedbackIconButton(),
           IconButton(
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout_rounded),

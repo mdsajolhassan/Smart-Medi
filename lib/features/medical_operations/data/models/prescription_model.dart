@@ -50,6 +50,7 @@ class PrescriptionModel {
   final String diagnosis;
   final List<PrescriptionItem> items;
   final String? advice;
+  final List<String> testsReferred;
   final DateTime? followUpDate;
   final String source; // strictly 'digital'
   final DateTime? createdAt;
@@ -69,6 +70,7 @@ class PrescriptionModel {
     required this.diagnosis,
     required this.items,
     this.advice,
+    this.testsReferred = const [],
     this.followUpDate,
     this.source = 'digital',
     this.createdAt,
@@ -94,6 +96,10 @@ class PrescriptionModel {
     }
     if (followUpDate != null) {
       map['followUpDate'] = Timestamp.fromDate(followUpDate!);
+    }
+    final tests = testsReferred.map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+    if (tests.isNotEmpty) {
+      map['testsReferred'] = tests;
     }
     return map;
   }
@@ -141,6 +147,9 @@ class PrescriptionModel {
       diagnosis: data['diagnosis']?.toString() ?? '',
       items: itemsList,
       advice: data['advice']?.toString(),
+      testsReferred: data['testsReferred'] is List
+          ? (data['testsReferred'] as List).map((e) => e.toString()).toList()
+          : const [],
       followUpDate: followUp,
       source: data['source']?.toString() ?? 'digital',
       createdAt: created,

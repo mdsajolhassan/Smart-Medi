@@ -156,8 +156,7 @@ class FacultyAccessRoles {
 class BaustEmergencyContacts {
   // TODO(add verified numbers from the university)
   static const String medicalHotline = '';
-  // TODO(add verified numbers from the university)
-  static const String ambulancePhone = '';
+  static const String ambulancePhone = '01945678934';
 
   static String get hotlineDisplay => medicalHotline.trim().isNotEmpty ? medicalHotline.trim() : 'Coming soon';
   static String get ambulanceDisplay => ambulancePhone.trim().isNotEmpty ? ambulancePhone.trim() : 'Coming soon';
@@ -170,4 +169,37 @@ class FirestoreCollections {
   static const String faculty = 'faculty';
   static const String inventory = 'inventory';
   static const String patientCheckins = 'patient_checkins';
+  static const String customMedicineRequests = 'custom_medicine_requests';
+  static const String pharmacyNotifications = 'pharmacy_notifications';
+}
+
+/// Medicines stocked at the BAUST Medical Center pharmacy, plus common
+/// diagnostic tests a doctor can refer. Anything outside the pharmacy list is
+/// a "custom" medicine and is sent to the admin account for review.
+class PharmacyCatalogue {
+  static const List<String> stockedMedicines = [
+    'Napa 500mg',
+    'Seclo 20mg',
+    'Metronidazole 400mg',
+    'Orsaline-N / SMC ORS',
+    'Povidone Iodine 10%',
+  ];
+
+  static bool isStocked(String name) {
+    final n = name.trim().toLowerCase();
+    return stockedMedicines.any((m) => m.toLowerCase() == n);
+  }
+
+  static const List<String> commonTests = [
+    'CBC',
+    'Blood Sugar (RBS)',
+    'Urine R/E',
+    'Chest X-Ray',
+    'ECG',
+    'Lipid Profile',
+    'LFT (SGPT)',
+    'Serum Creatinine',
+    'Dengue NS1',
+    'Widal Test',
+  ];
 }

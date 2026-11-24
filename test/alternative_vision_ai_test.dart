@@ -12,20 +12,26 @@ const _rxJson = {
   'document_type': 'prescription',
   'patient_name': 'Sajol Hassan',
   'current_medications': [
-    {'name': 'Tab. Napa 500mg', 'dose': '1 tab', 'frequency': '1+1+1', 'duration_text': '5 days', 'instructions': 'after meals'},
+    {
+      'name': 'Tab. Napa 500mg',
+      'dose': '1 tab',
+      'frequency': '1+1+1',
+      'duration_text': '5 days',
+      'instructions': 'after meals',
+    },
   ],
 };
 
 http.Response _openAiReply(String content) => http.Response(
-      jsonEncode({
-        'choices': [
-          {
-            'message': {'role': 'assistant', 'content': content},
-          },
-        ],
-      }),
-      200,
-    );
+  jsonEncode({
+    'choices': [
+      {
+        'message': {'role': 'assistant', 'content': content},
+      },
+    ],
+  }),
+  200,
+);
 
 void main() {
   final bytes = Uint8List.fromList([1, 2, 3, 4]);

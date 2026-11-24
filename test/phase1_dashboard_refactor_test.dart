@@ -32,10 +32,7 @@ void main() {
       expect(customProfile.roomNumber, equals('315-A'));
 
       // Verify SuperAdmin recognition
-      final adminProfile = defaultProfile.copyWith(
-        role: 'superadmin',
-        accessLevel: 'SuperAdmin',
-      );
+      final adminProfile = defaultProfile.copyWith(role: 'superadmin', accessLevel: 'SuperAdmin');
       expect(adminProfile.isSuperAdmin, isTrue);
 
       final sajolProfile = UserProfile(
@@ -82,10 +79,7 @@ void main() {
         onboardingStatus: 'COMPLETED',
       );
 
-      final mockAuthState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: testProfile,
-      );
+      final mockAuthState = AuthState(status: AuthStatus.authenticated, userProfile: testProfile);
 
       await tester.pumpWidget(
         ProviderScope(
@@ -93,11 +87,7 @@ void main() {
             authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState)),
             sosControllerProvider.overrideWith(() => _MockSosNotifier()),
           ],
-          child: MaterialApp(
-            home: SosScreen(
-              onNavigateToProfile: () {},
-            ),
-          ),
+          child: MaterialApp(home: SosScreen(onNavigateToProfile: () {})),
         ),
       );
       await tester.pump(const Duration(milliseconds: 200));
@@ -142,10 +132,7 @@ void main() {
         onboardingStatus: 'COMPLETED',
       );
 
-      final mockAuthState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: adminProfile,
-      );
+      final mockAuthState = AuthState(status: AuthStatus.authenticated, userProfile: adminProfile);
 
       await tester.pumpWidget(
         ProviderScope(
@@ -153,9 +140,7 @@ void main() {
             authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState)),
             sosControllerProvider.overrideWith(() => _MockSosNotifier()),
           ],
-          child: const MaterialApp(
-            home: MainDashboardScreen(),
-          ),
+          child: const MaterialApp(home: MainDashboardScreen()),
         ),
       );
       await tester.pump(const Duration(milliseconds: 300));

@@ -291,3 +291,17 @@ class _FeedbackInboxScreenState extends ConsumerState<FeedbackInboxScreen> {
   static String _fmt(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
+
+/// App-bar button that opens the feedback / bug report form (goes to the super admin).
+class FeedbackIconButton extends StatelessWidget {
+  const FeedbackIconButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Report a bug / Send feedback',
+      icon: const Icon(Icons.feedback_outlined),
+      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SendFeedbackScreen())),
+    );
+  }
+}

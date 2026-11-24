@@ -7,10 +7,13 @@ import '../../../../core/widgets/smart_medi_drawer.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../../profile/presentation/screens/edit_profile_screen.dart';
 import '../../data/user_admin_service.dart';
+import 'pharmacy_stock_alerts_screen.dart';
+import 'custom_medicine_requests_screen.dart';
 import 'feedback_screens.dart';
 import 'id_verification_review_screen.dart';
 import 'superadmin_dashboard.dart';
 import 'user_management_screen.dart';
+import '../../../../core/widgets/animations.dart';
 
 /// Home screen for the Admin and Super Admin roles.
 class AdminConsoleScreen extends ConsumerStatefulWidget {
@@ -58,6 +61,20 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
         subtitle: 'Approve new student accounts',
         onTap: () => _open(const IdVerificationReviewScreen()),
       ),
+      _ConsoleAction(
+        icon: Icons.notifications_active_rounded,
+        color: const Color(0xFF0D9488),
+        title: 'Pharmacy Stock Alerts',
+        subtitle: 'Low stock & expiry; notify the pharmacist',
+        onTap: () => _open(const PharmacyStockAlertsScreen()),
+      ),
+      _ConsoleAction(
+        icon: Icons.local_pharmacy_rounded,
+        color: const Color(0xFF16A34A),
+        title: 'Custom Medicine Requests',
+        subtitle: 'Medicines doctors prescribed that the pharmacy does not stock',
+        onTap: () => _open(const CustomMedicineRequestsScreen()),
+      ),
       if (isSuper)
         _ConsoleAction(
           icon: Icons.bug_report_rounded,
@@ -71,7 +88,7 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
           icon: Icons.admin_panel_settings_rounded,
           color: const Color(0xFFF59E0B),
           title: 'Control Center',
-          subtitle: 'Faculty directory, access logs, SOS monitor',
+          subtitle: 'Faculty directory and access logs',
           onTap: () => _open(const SuperAdminDashboard()),
         ),
       _ConsoleAction(
@@ -105,7 +122,16 @@ class _AdminConsoleScreenState extends ConsumerState<AdminConsoleScreen> {
             const SizedBox(height: 20),
             const Text('Manage', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
-            ResponsiveWrapGrid(minTileWidth: 300, children: [for (final a in actions) _actionCard(a)]),
+            ResponsiveWrapGrid(
+              minTileWidth: 300,
+              children: [
+                for (var i = 0; i < actions.length; i++)
+                  FadeSlideIn(
+                    index: i,
+                    child: HoverLift(child: _actionCard(actions[i])),
+                  ),
+              ],
+            ),
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(14),

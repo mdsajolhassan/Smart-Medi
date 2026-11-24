@@ -9,6 +9,7 @@ import '../../../blood_bank/presentation/screens/blood_donor_directory.dart';
 import '../../../emergency_sos/presentation/screens/sos_screen.dart';
 import 'profile_tab_screen.dart';
 import 'medical_history_tab_screen.dart';
+import '../../../../features/admin_portal/presentation/screens/feedback_screens.dart';
 
 class MainDashboardScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
@@ -108,6 +109,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SuperAdminDashboard()));
               },
             ),
+          const FeedbackIconButton(),
           IconButton(
             tooltip: 'Sign Out',
             icon: const Icon(Icons.logout_rounded),

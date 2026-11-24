@@ -102,7 +102,9 @@ void main() {
   });
 
   group('Conditional Onboarding Profile Setup UI Tests', () {
-    testWidgets('5. ProfileSetupScreen toggles dynamically between Residential and Non-Residential fields', (tester) async {
+    testWidgets('5. ProfileSetupScreen toggles dynamically between Residential and Non-Residential fields', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -115,19 +117,12 @@ void main() {
         profileCompleted: false,
       );
 
-      final mockAuthState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: initialProfile,
-      );
+      final mockAuthState = AuthState(status: AuthStatus.authenticated, userProfile: initialProfile);
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState)),
-          ],
-          child: const MaterialApp(
-            home: ProfileSetupScreen(),
-          ),
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState))],
+          child: const MaterialApp(home: ProfileSetupScreen()),
         ),
       );
       await tester.pump(const Duration(milliseconds: 200));
@@ -184,10 +179,7 @@ void main() {
         profileCompleted: true,
       );
 
-      final mockAuthState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: nonResProfile,
-      );
+      final mockAuthState = AuthState(status: AuthStatus.authenticated, userProfile: nonResProfile);
 
       // Test SosScreen shows non-residential address
       await tester.pumpWidget(
@@ -196,9 +188,7 @@ void main() {
             authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState)),
             sosControllerProvider.overrideWith(() => _MockSosNotifier()),
           ],
-          child: MaterialApp(
-            home: SosScreen(onNavigateToProfile: () {}),
-          ),
+          child: MaterialApp(home: SosScreen(onNavigateToProfile: () {})),
         ),
       );
       await tester.pump(const Duration(milliseconds: 200));
@@ -216,9 +206,7 @@ void main() {
             authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState)),
             sosControllerProvider.overrideWith(() => _MockSosNotifier()),
           ],
-          child: const MaterialApp(
-            home: ProfileTabScreen(),
-          ),
+          child: const MaterialApp(home: ProfileTabScreen()),
         ),
       );
       await tester.pump(const Duration(milliseconds: 200));

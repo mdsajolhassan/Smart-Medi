@@ -4,10 +4,6 @@ import 'package:smart_medi/app.dart';
 
 void main() {
   testWidgets('SmartMediApp smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: SmartMediApp(),
-      ),
-    );
+    await tester.pumpWidget(const ProviderScope(child: SmartMediApp()));
   });
 }

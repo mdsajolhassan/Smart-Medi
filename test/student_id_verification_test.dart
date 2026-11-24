@@ -19,32 +19,36 @@ class _MockAuthNotifier extends AuthNotifier {
 }
 
 // 1x1 transparent PNG
-final _png = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
+final _png = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+);
 
 UserProfile _student({String? idStatus, String onboarding = 'DOCS_PENDING', String? note}) => UserProfile(
-      uid: 's1',
-      email: 'sajol@baust.edu.bd',
-      displayName: 'MD. Sajol Hassan',
-      role: 'student',
-      studentRoll: '0802420205101137',
-      profileCompleted: true,
-      onboardingStatus: onboarding,
-      idVerificationStatus: idStatus,
-      idReviewNote: note,
-    );
+  uid: 's1',
+  email: 'sajol@baust.edu.bd',
+  displayName: 'MD. Sajol Hassan',
+  role: 'student',
+  studentRoll: '0802420205101137',
+  profileCompleted: true,
+  onboardingStatus: onboarding,
+  idVerificationStatus: idStatus,
+  idReviewNote: note,
+);
 
 Future<void> _pump(WidgetTester tester, Widget child, UserProfile user) async {
   tester.view.physicalSize = const Size(1080, 3000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
-  await tester.pumpWidget(ProviderScope(
-    overrides: [
-      authControllerProvider.overrideWith(
-        () => _MockAuthNotifier(AuthState(status: AuthStatus.authenticated, userProfile: user)),
-      ),
-    ],
-    child: MaterialApp(home: child),
-  ));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _MockAuthNotifier(AuthState(status: AuthStatus.authenticated, userProfile: user)),
+        ),
+      ],
+      child: MaterialApp(home: child),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -68,6 +72,24 @@ void main() {
     });
   });
 
+  test('legacy environmentalAllergies strings are kept', () {
+    final data = ExtractedMedicalData(
+      isMedicalDocument: true,
+      documentType: 'prescription',
+      classificationReason: 'test',
+      bloodGroup: null,
+      bloodGroupSource: 'not_found',
+      environmentalAllergies: const ['Dust'],
+      chronicConditions: const [],
+      currentMedications: const [],
+      abnormalLabs: const [],
+      pastVisits: const [],
+      rawJson: const {},
+    );
+    expect(data.environmentalAllergyItems, hasLength(1));
+    expect(data.environmentalAllergies.first, contains('Dust'));
+  });
+
   group('AI ID card comparison', () {
     test('matches name and ID ignoring prefixes and formatting', () {
       final r = GeminiAiService.compareIdCardWithProfile(
@@ -83,6 +105,24 @@ void main() {
       expect(r['nameMatch'], isTrue);
       expect(r['idMatch'], isTrue);
       expect(r['looksValid'], isTrue);
+    });
+
+    test('a short partial ID read does not count as a match', () {
+      final r = GeminiAiService.compareIdCardWithProfile(
+        {'is_student_id_card': true, 'is_baust': true, 'student_name': 'Sajol Hassan', 'student_id': '9001'},
+        profileName: 'MD. Sajol Hassan',
+        profileStudentId: '0802420205109001',
+      );
+      expect(r['idMatch'], isFalse);
+    });
+
+    test('an OCR read missing only the leading zero still matches', () {
+      final r = GeminiAiService.compareIdCardWithProfile(
+        {'is_student_id_card': true, 'is_baust': true, 'student_name': 'Sajol Hassan', 'student_id': '802420205101137'},
+        profileName: 'MD. Sajol Hassan',
+        profileStudentId: '0802420205101137',
+      );
+      expect(r['idMatch'], isTrue);
     });
 
     test('flags a different student', () {
@@ -157,19 +197,27 @@ void main() {
     await _pump(
       tester,
       IdVerificationReviewScreen(
-        streamOverride: (status) => Stream.value(status == 'pending'
-            ? [
-                {
-                  'uid': 's1',
-                  'displayName': 'MD. Sajol Hassan',
-                  'studentRoll': '0802420205101137',
-                  'department': 'CSE',
-                  'email': 'sajol@baust.edu.bd',
-                  'imageBase64': base64Encode(_png),
-                  'aiCheck': {'isIdCard': true, 'isBaust': true, 'nameMatch': true, 'idMatch': true, 'looksValid': true},
-                },
-              ]
-            : <Map<String, dynamic>>[]),
+        streamOverride: (status) => Stream.value(
+          status == 'pending'
+              ? [
+                  {
+                    'uid': 's1',
+                    'displayName': 'MD. Sajol Hassan',
+                    'studentRoll': '0802420205101137',
+                    'department': 'CSE',
+                    'email': 'sajol@baust.edu.bd',
+                    'imageBase64': base64Encode(_png),
+                    'aiCheck': {
+                      'isIdCard': true,
+                      'isBaust': true,
+                      'nameMatch': true,
+                      'idMatch': true,
+                      'looksValid': true,
+                    },
+                  },
+                ]
+              : <Map<String, dynamic>>[],
+        ),
         onReviewOverride: (uid, approve, note) async => reviews.add('$uid:$approve'),
       ),
       admin,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/baust_constants.dart';
 import '../controllers/auth_controller.dart';
+import '../../../../features/admin_portal/presentation/screens/feedback_screens.dart';
 
 class WaitingForApprovalScreen extends ConsumerStatefulWidget {
   const WaitingForApprovalScreen({super.key});
@@ -41,6 +42,7 @@ class _WaitingForApprovalScreenState extends ConsumerState<WaitingForApprovalScr
       appBar: AppBar(
         title: Text(isRejected ? 'Account Not Approved' : 'Account Pending Approval'),
         actions: [
+          const FeedbackIconButton(),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign Out',

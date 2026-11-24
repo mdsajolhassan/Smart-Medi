@@ -17,19 +17,34 @@ class _MockAuthNotifier extends AuthNotifier {
 
 void main() {
   group('1. Pharmacy Inventory & Multiplier Controls Tests', () {
-    testWidgets('Top 5 core medicines strictly initialized to 20 units and multiplier updates stock by ±factor', (tester) async {
+    testWidgets('Top 5 core medicines strictly initialized to 20 units and multiplier updates stock by ±factor', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
+      final pharmacistState = AuthState(
+        status: AuthStatus.authenticated,
+        userProfile: UserProfile(
+          uid: 'pharm-001',
+          email: 'pharmacy@baust.edu.bd',
+          displayName: 'Pharmacist',
+          role: 'pharmacist',
+        ),
+      );
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: PharmacistInventoryScreen(),
-          ),
+        ProviderScope(
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(pharmacistState))],
+          child: const MaterialApp(home: PharmacistInventoryScreen()),
         ),
       );
       await tester.pumpAndSettle();
+
+      expect(find.text('Pharmacy Inventory (Pharmacist)'), findsOneWidget);
+      expect(find.text('Add Medicine'), findsOneWidget);
+      expect(find.byTooltip('Edit details'), findsNWidgets(5));
+      expect(find.byTooltip('Remove medicine'), findsNWidgets(5));
 
       // Verify the Top 5 Essential Medicines are displayed
       expect(find.text('Napa 500mg'), findsOneWidget);
@@ -109,6 +124,55 @@ void main() {
       expect(updatedList.first.purpose, equals('Fever & Flu Examination'));
     });
 
+    testWidgets('Doctors see pharmacy stock as view-only (no dispense/restock controls)', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final doctorState = AuthState(
+        status: AuthStatus.authenticated,
+        userProfile: UserProfile(uid: 'doc-001', email: 'doc@baust.edu.bd', displayName: 'Dr. Test', role: 'doctor'),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(doctorState))],
+          child: const MaterialApp(home: PharmacistInventoryScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Napa 500mg'), findsOneWidget);
+      expect(find.text('20 Units'), findsNWidgets(5));
+      expect(find.text('Pharmacy Stock (View Only)'), findsOneWidget);
+      expect(find.byTooltip('Edit details'), findsNothing);
+      expect(find.byTooltip('Remove medicine'), findsNothing);
+      expect(find.text('1x'), findsNothing);
+      expect(find.text('-1'), findsNothing);
+      expect(find.text('+1'), findsNothing);
+      expect(find.text('Add Medicine'), findsNothing);
+    });
+
+    testWidgets('Admins see pharmacy stock as view-only too', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final adminState = AuthState(
+        status: AuthStatus.authenticated,
+        userProfile: UserProfile(uid: 'admin-001', email: 'admin@baust.edu.bd', displayName: 'Admin', role: 'admin'),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(adminState))],
+          child: const MaterialApp(home: PharmacistInventoryScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Pharmacy Stock (View Only)'), findsOneWidget);
+      expect(find.text('Add Medicine'), findsNothing);
+      expect(find.text('+1'), findsNothing);
+    });
+
     testWidgets('PatientCheckInLogScreen displays search, timeline, and records new patient entry', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
@@ -123,19 +187,12 @@ void main() {
         designation: 'Medical Assistant / Pharmacist',
       );
 
-      final mockAuthState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: staffProfile,
-      );
+      final mockAuthState = AuthState(status: AuthStatus.authenticated, userProfile: staffProfile);
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState)),
-          ],
-          child: const MaterialApp(
-            home: PatientCheckInLogScreen(),
-          ),
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState))],
+          child: const MaterialApp(home: PatientCheckInLogScreen()),
         ),
       );
       await tester.pumpAndSettle();
@@ -178,19 +235,12 @@ void main() {
         designation: 'Senior Medical Officer',
       );
 
-      final mockAuthState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: docProfile,
-      );
+      final mockAuthState = AuthState(status: AuthStatus.authenticated, userProfile: docProfile);
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState)),
-          ],
-          child: const MaterialApp(
-            home: DoctorDashboardScreen(),
-          ),
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(mockAuthState))],
+          child: const MaterialApp(home: DoctorDashboardScreen()),
         ),
       );
       await tester.pumpAndSettle();

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../../../core/widgets/shimmer_loading.dart';
 
@@ -12,12 +13,7 @@ class StudentDepartmentDirectory extends StatefulWidget {
   final void Function(Map<String, dynamic> studentData, String studentUid) onStudentSelected;
   final List<Map<String, dynamic>>? studentsOverride;
 
-  const StudentDepartmentDirectory({
-    super.key,
-    this.firestore,
-    required this.onStudentSelected,
-    this.studentsOverride,
-  });
+  const StudentDepartmentDirectory({super.key, this.firestore, required this.onStudentSelected, this.studentsOverride});
 
   @override
   State<StudentDepartmentDirectory> createState() => _StudentDepartmentDirectoryState();
@@ -234,17 +230,11 @@ class _StudentDepartmentDirectoryState extends State<StudentDepartmentDirectory>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isCse
-                  ? BaustColors.primaryArmyGreen.withValues(alpha: 0.3)
-                  : Colors.grey.shade200,
+              color: isCse ? BaustColors.primaryArmyGreen.withValues(alpha: 0.3) : Colors.grey.shade200,
               width: isCse ? 1.5 : 1.0,
             ),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2)),
             ],
           ),
           child: Material(
@@ -254,168 +244,143 @@ class _StudentDepartmentDirectoryState extends State<StudentDepartmentDirectory>
             child: Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
-              initiallyExpanded: isCse,
-              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isCse
-                      ? BaustColors.primaryArmyGreen.withValues(alpha: 0.1)
-                      : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                initiallyExpanded: isCse,
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isCse ? BaustColors.primaryArmyGreen.withValues(alpha: 0.1) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 20, color: isCse ? BaustColors.primaryArmyGreen : Colors.grey.shade700),
                 ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: isCse ? BaustColors.primaryArmyGreen : Colors.grey.shade700,
+                title: Text(
+                  department,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isCse ? BaustColors.primaryArmyGreen : BaustColors.textDark,
+                  ),
                 ),
-              ),
-              title: Text(
-                department,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: isCse ? BaustColors.primaryArmyGreen : BaustColors.textDark,
+                subtitle: Text(
+                  '${studentsInDept.length} registered ${studentsInDept.length == 1 ? "student" : "students"}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
-              ),
-              subtitle: Text(
-                '${studentsInDept.length} registered ${studentsInDept.length == 1 ? "student" : "students"}',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
-              children: [
-                if (studentsInDept.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.person_off_outlined,
-                            size: 28,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'No students registered yet',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: BaustColors.textMuted,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Students will appear here upon onboarding completion.',
-                            style: TextStyle(fontSize: 10, color: BaustColors.textMuted),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    itemCount: studentsInDept.length,
-                    separatorBuilder: (context, index) => const Divider(height: 1, thickness: 0.5),
-                    itemBuilder: (ctx, index) {
-                      final student = studentsInDept[index];
-                      final name = student['displayName']?.toString() ??
-                          student['name']?.toString() ??
-                          'Unknown Student';
-                      final studentId = student['studentId']?.toString() ??
-                          student['studentRoll']?.toString() ??
-                          'N/A';
-                      final bloodGroup = student['bloodGroup']?.toString();
-                      final uid = student['uid']?.toString() ??
-                          student['studentId']?.toString() ??
-                          'student_$index';
-
-                      return ListTile(
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        leading: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: BaustColors.primaryArmyGreen.withValues(alpha: 0.1),
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: BaustColors.primaryArmyGreen,
-                            ),
-                          ),
+                children: [
+                  if (studentsInDept.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
-                        title: Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: BaustColors.textDark,
-                          ),
-                        ),
-                        subtitle: Row(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Flexible(
-                              child: Text(
-                                'ID: $studentId',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: BaustColors.textMuted,
-                                ),
-                              ),
+                            Icon(Icons.person_off_outlined, size: 28, color: Colors.grey.shade400),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'No students registered yet',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: BaustColors.textMuted),
                             ),
-                            if (bloodGroup != null && bloodGroup.trim().isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade50,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.red.shade200),
-                                ),
-                                child: Text(
-                                  bloodGroup,
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red.shade700,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Students will appear here upon onboarding completion.',
+                              style: TextStyle(fontSize: 10, color: BaustColors.textMuted),
+                            ),
                           ],
                         ),
-                        trailing: const Icon(
-                          Icons.arrow_forward_ios,
-                          size: 13,
-                          color: BaustColors.primaryArmyGreen,
-                        ),
-                        onTap: () => widget.onStudentSelected(student, uid),
-                      );
-                    },
-                  ),
-              ],
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      itemCount: studentsInDept.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1, thickness: 0.5),
+                      itemBuilder: (ctx, index) {
+                        final student = studentsInDept[index];
+                        final name =
+                            student['displayName']?.toString() ?? student['name']?.toString() ?? 'Unknown Student';
+                        final studentId =
+                            student['studentId']?.toString() ?? student['studentRoll']?.toString() ?? 'N/A';
+                        final bloodGroup = student['bloodGroup']?.toString();
+                        final uid = student['uid']?.toString() ?? student['studentId']?.toString() ?? 'student_$index';
+
+                        return ListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          leading: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: BaustColors.primaryArmyGreen.withValues(alpha: 0.1),
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : 'S',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: BaustColors.primaryArmyGreen,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: BaustColors.textDark,
+                            ),
+                          ),
+                          subtitle: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'ID: $studentId',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
+                                ),
+                              ),
+                              if (bloodGroup != null && bloodGroup.trim().isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.red.shade200),
+                                  ),
+                                  child: Text(
+                                    bloodGroup,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 13, color: BaustColors.primaryArmyGreen),
+                          onTap: () => widget.onStudentSelected(student, uid),
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    }).toList(),
+        );
+      }).toList(),
     );
   }
 }

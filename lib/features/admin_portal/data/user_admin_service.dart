@@ -24,8 +24,8 @@ class UserAdminService {
 
   /// Roles [actor] may assign or manage.
   static List<String> assignableRoles(UserProfile actor) => actor.isSuperAdmin
-      ? const ['student', 'doctor', 'admin']
-      : (actor.isAdmin ? const ['student', 'doctor'] : const []);
+      ? const ['student', 'doctor', 'pharmacist', 'admin']
+      : (actor.isAdmin ? const ['student', 'doctor', 'pharmacist'] : const []);
 
   /// Whether [actor] may change or remove [target].
   static bool canManage(UserProfile actor, Map<String, dynamic> target) {

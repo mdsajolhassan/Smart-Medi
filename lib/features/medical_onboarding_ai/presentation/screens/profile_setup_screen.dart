@@ -5,6 +5,7 @@ import '../../../../core/config/auth_config.dart';
 import '../../../../core/constants/baust_constants.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../../../core/widgets/responsive.dart';
+import '../../../../features/admin_portal/presentation/screens/feedback_screens.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -144,6 +145,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       appBar: AppBar(
         title: const Text('Student Profile Setup'),
         actions: [
+          const FeedbackIconButton(),
           IconButton(
             tooltip: 'Sign Out',
             icon: const Icon(Icons.logout_rounded),

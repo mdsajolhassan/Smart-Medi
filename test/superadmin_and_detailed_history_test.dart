@@ -113,11 +113,12 @@ void main() {
       expect(AuthConfig.isEmailAllowed('SERVICEPROVIDERGALIB@GMAIL.COM'), isTrue);
       expect(AuthConfig.isEmailAllowed('unauthorized.student@gmail.com'), isFalse);
     });
-
   });
 
   group('2. Detailed Medical History & Chronological Clinical Timeline View Tests', () {
-    testWidgets('MedicalHistoryTabScreen displays View Detailed Medical History button and opens dossier', (tester) async {
+    testWidgets('MedicalHistoryTabScreen displays View Detailed Medical History button and opens dossier', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -134,19 +135,12 @@ void main() {
         roomNumber: '402-B',
       );
 
-      final authState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: studentProfile,
-      );
+      final authState = AuthState(status: AuthStatus.authenticated, userProfile: studentProfile);
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(authState)),
-          ],
-          child: const MaterialApp(
-            home: MedicalHistoryTabScreen(),
-          ),
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(authState))],
+          child: const MaterialApp(home: MedicalHistoryTabScreen()),
         ),
       );
       await tester.pumpAndSettle();
@@ -166,119 +160,115 @@ void main() {
       expect(find.textContaining('0802420205101137'), findsWidgets);
     });
 
-    testWidgets('DetailedMedicalHistoryScreen renders surgeries, prescriptions, diagnoses, and filters from real data', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets(
+      'DetailedMedicalHistoryScreen renders surgeries, prescriptions, diagnoses, and filters from real data',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      final studentProfile = UserProfile(
-        uid: 'student-sajol-001',
-        email: '0802420205101137@baust.edu.bd',
-        displayName: 'MD. Sajol Hassan',
-        studentRoll: '0802420205101137',
-        role: 'student',
-        bloodGroup: 'B+',
-        department: 'Dept of CSE',
-        residentialHall: 'Shaheed Dr. Zikrul Haque Hall (SDZHH)',
-        roomNumber: '402-B',
-      );
+        final studentProfile = UserProfile(
+          uid: 'student-sajol-001',
+          email: '0802420205101137@baust.edu.bd',
+          displayName: 'MD. Sajol Hassan',
+          studentRoll: '0802420205101137',
+          role: 'student',
+          bloodGroup: 'B+',
+          department: 'Dept of CSE',
+          residentialHall: 'Shaheed Dr. Zikrul Haque Hall (SDZHH)',
+          roomNumber: '402-B',
+        );
 
-      final authState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: studentProfile,
-      );
+        final authState = AuthState(status: AuthStatus.authenticated, userProfile: studentProfile);
 
-      final realMedicalHistoryData = {
-        'procedures': [
-          {
-            'name': 'Laparoscopic Appendectomy',
-            'date': '14 August 2022',
-            'facility': 'Department of General Surgery, CMH / Rangpur',
-            'details': 'Surgical clearance granted. Full functional recovery.',
-          },
-        ],
-        'historicalProblems': [
-          'Bronchial Asthma (Moderate Persistent)',
-        ],
-        'prescriptions': [
-          {
-            'name': 'Salbutamol Inhaler (100 mcg/dose)',
-            'prescribed_date': '15 February 2024',
-            'dosage': '2 puffs',
-            'frequency': 'PRN every 4-6 hours',
-            'instructions': '2 puffs inhaled PRN every 4-6 hours during respiratory distress.',
-            'doctor': 'BAUST Medical Officer Prescription #BM-8842',
-          },
-        ],
-        'clinicalSummary': 'Vitals stable. Active respiratory plan documented.',
-      };
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(authState)),
+        final realMedicalHistoryData = {
+          'procedures': [
+            {
+              'name': 'Laparoscopic Appendectomy',
+              'date': '14 August 2022',
+              'facility': 'Department of General Surgery, CMH / Rangpur',
+              'details': 'Surgical clearance granted. Full functional recovery.',
+            },
           ],
-          child: MaterialApp(
-            home: DetailedMedicalHistoryScreen(initialData: realMedicalHistoryData),
+          'historicalProblems': ['Bronchial Asthma (Moderate Persistent)'],
+          'prescriptions': [
+            {
+              'name': 'Salbutamol Inhaler (100 mcg/dose)',
+              'prescribed_date': '15 February 2024',
+              'dosage': '2 puffs',
+              'frequency': 'PRN every 4-6 hours',
+              'instructions': '2 puffs inhaled PRN every 4-6 hours during respiratory distress.',
+              'doctor': 'BAUST Medical Officer Prescription #BM-8842',
+            },
+          ],
+          'clinicalSummary': 'Vitals stable. Active respiratory plan documented.',
+        };
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(authState))],
+            child: MaterialApp(home: DetailedMedicalHistoryScreen(initialData: realMedicalHistoryData)),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      // Verify patient header with real profile data
-      expect(find.text('MD. Sajol Hassan'), findsOneWidget);
-      expect(find.text('B+'), findsOneWidget);
-      expect(find.textContaining('0802420205101137'), findsWidgets);
-      expect(find.textContaining('Shaheed Dr. Zikrul Haque Hall (SDZHH), Room: 402-B'), findsOneWidget);
+        // Verify patient header with real profile data
+        expect(find.text('MD. Sajol Hassan'), findsOneWidget);
+        expect(find.text('B+'), findsOneWidget);
+        expect(find.textContaining('0802420205101137'), findsWidgets);
+        expect(find.textContaining('Shaheed Dr. Zikrul Haque Hall (SDZHH), Room: 402-B'), findsOneWidget);
 
-      // Verify chronological timeline milestones parsed from real data
-      expect(find.text('Laparoscopic Appendectomy'), findsOneWidget);
-      expect(find.text('14 August 2022'), findsOneWidget);
-      expect(find.text('Bronchial Asthma (Moderate Persistent)'), findsOneWidget);
-      expect(find.text('Salbutamol Inhaler (100 mcg/dose)'), findsOneWidget);
-      expect(find.text('15 February 2024'), findsOneWidget);
+        // Verify chronological timeline milestones parsed from real data
+        expect(find.text('Laparoscopic Appendectomy'), findsOneWidget);
+        expect(find.text('14 August 2022'), findsOneWidget);
+        expect(find.text('Bronchial Asthma (Moderate Persistent)'), findsOneWidget);
+        expect(find.text('Salbutamol Inhaler (100 mcg/dose)'), findsOneWidget);
+        expect(find.text('15 February 2024'), findsOneWidget);
 
-      // Verify category filter chips
-      expect(find.widgetWithText(FilterChip, 'Surgeries'), findsOneWidget);
-      expect(find.widgetWithText(FilterChip, 'Prescriptions'), findsOneWidget);
-      expect(find.widgetWithText(FilterChip, 'Conditions'), findsOneWidget);
+        // Verify category filter chips
+        expect(find.widgetWithText(FilterChip, 'Surgeries'), findsOneWidget);
+        expect(find.widgetWithText(FilterChip, 'Prescriptions'), findsOneWidget);
+        expect(find.widgetWithText(FilterChip, 'Conditions'), findsOneWidget);
 
-      // Filter by "Surgeries"
-      await tester.tap(find.widgetWithText(FilterChip, 'Surgeries'));
-      await tester.pumpAndSettle();
+        // Filter by "Surgeries"
+        await tester.tap(find.widgetWithText(FilterChip, 'Surgeries'));
+        await tester.pumpAndSettle();
 
-      // Surgery remains visible, prescriptions hidden
-      expect(find.text('Laparoscopic Appendectomy'), findsOneWidget);
-      expect(find.text('Salbutamol Inhaler (100 mcg/dose)'), findsNothing);
+        // Surgery remains visible, prescriptions hidden
+        expect(find.text('Laparoscopic Appendectomy'), findsOneWidget);
+        expect(find.text('Salbutamol Inhaler (100 mcg/dose)'), findsNothing);
 
-      // Reset to "All"
-      await tester.tap(find.widgetWithText(FilterChip, 'All'));
-      await tester.pumpAndSettle();
+        // Reset to "All"
+        await tester.tap(find.widgetWithText(FilterChip, 'All'));
+        await tester.pumpAndSettle();
 
-      // Verify search input filtering
-      await tester.enterText(find.byType(TextField).first, 'Salbutamol');
-      await tester.pumpAndSettle();
+        // Verify search input filtering
+        await tester.enterText(find.byType(TextField).first, 'Salbutamol');
+        await tester.pumpAndSettle();
 
-      expect(find.text('Salbutamol Inhaler (100 mcg/dose)'), findsOneWidget);
-      expect(find.text('Laparoscopic Appendectomy'), findsNothing);
+        expect(find.text('Salbutamol Inhaler (100 mcg/dose)'), findsOneWidget);
+        expect(find.text('Laparoscopic Appendectomy'), findsNothing);
 
-      // Clear search
-      await tester.enterText(find.byType(TextField).first, '');
-      await tester.pumpAndSettle();
+        // Clear search
+        await tester.enterText(find.byType(TextField).first, '');
+        await tester.pumpAndSettle();
 
-      // Open Export Dossier Dialog
-      await tester.tap(find.byIcon(Icons.print_outlined));
-      await tester.pumpAndSettle();
+        // Open Export Dossier Dialog
+        await tester.tap(find.byIcon(Icons.print_outlined));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Clinical Dossier Export'), findsOneWidget);
-      expect(find.textContaining('Patient: MD. Sajol Hassan'), findsOneWidget);
-      expect(find.text('Share Summary'), findsOneWidget);
+        expect(find.text('Clinical Dossier Export'), findsOneWidget);
+        expect(find.textContaining('Patient: MD. Sajol Hassan'), findsOneWidget);
+        expect(find.text('Share Summary'), findsOneWidget);
 
-      await tester.tap(find.text('Share Summary'));
-      await tester.pumpAndSettle();
-    });
+        await tester.tap(find.text('Share Summary'));
+        await tester.pumpAndSettle();
+      },
+    );
 
-    testWidgets('DetailedMedicalHistoryScreen displays "Not found - confirm with patient" when data is missing', (tester) async {
+    testWidgets('DetailedMedicalHistoryScreen displays "Not found - confirm with patient" when data is missing', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -291,19 +281,12 @@ void main() {
         role: 'student',
       );
 
-      final authState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: emptyProfile,
-      );
+      final authState = AuthState(status: AuthStatus.authenticated, userProfile: emptyProfile);
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(authState)),
-          ],
-          child: const MaterialApp(
-            home: DetailedMedicalHistoryScreen(initialData: {}),
-          ),
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(authState))],
+          child: const MaterialApp(home: DetailedMedicalHistoryScreen(initialData: {})),
         ),
       );
       await tester.pumpAndSettle();
@@ -315,7 +298,7 @@ void main() {
   });
 
   group('3. Super Admin Testing & System Accounts Overview Dashboard Tests', () {
-    testWidgets('SuperAdminDashboard displays registered accounts, live SOS monitor, and test actions', (tester) async {
+    testWidgets('SuperAdminDashboard displays registered accounts and has no SOS testing monitor', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -328,19 +311,12 @@ void main() {
         accessLevel: 'SuperAdmin',
       );
 
-      final authState = AuthState(
-        status: AuthStatus.authenticated,
-        userProfile: superAdminProfile,
-      );
+      final authState = AuthState(status: AuthStatus.authenticated, userProfile: superAdminProfile);
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(() => _MockAuthNotifier(authState)),
-          ],
-          child: const MaterialApp(
-            home: SuperAdminDashboard(),
-          ),
+          overrides: [authControllerProvider.overrideWith(() => _MockAuthNotifier(authState))],
+          child: const MaterialApp(home: SuperAdminDashboard()),
         ),
       );
       await tester.pumpAndSettle();
@@ -351,12 +327,23 @@ void main() {
       expect(find.textContaining('Absolute SuperAdmin'), findsOneWidget);
 
       // 2. No hard-coded people: accounts and SOS alerts come only from Firestore
-      for (final name in ['MD. Sajol Hassan', 'Dr. Fowzia Jahan', 'Md. Mozaffor Hossain', 'Lamia Aktar Limu', 'Dr. Md Nakib Hayat Chowdhury']) {
+      for (final name in [
+        'MD. Sajol Hassan',
+        'Dr. Fowzia Jahan',
+        'Md. Mozaffor Hossain',
+        'Lamia Aktar Limu',
+        'Dr. Md Nakib Hayat Chowdhury',
+      ]) {
         expect(find.text(name), findsNothing);
       }
       expect(find.textContaining('0802420205101137'), findsNothing);
       expect(find.textContaining('limuakhtar9@gmail.com'), findsNothing);
       expect(find.textContaining('01769-675576'), findsNothing);
+
+      // 3. The SOS testing monitor and simulate tools are gone
+      expect(find.text('LIVE EMERGENCY SOS TESTING MONITOR'), findsNothing);
+      expect(find.byTooltip('Simulate Student SOS (Test Tool)'), findsNothing);
+      expect(find.text('Simulate SOS (Test Tool)'), findsNothing);
     });
   });
 }

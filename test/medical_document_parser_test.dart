@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_medi/features/medical_onboarding_ai/data/services/gemini_ai_service.dart';
@@ -20,11 +21,11 @@ void main() {
         'environmental_allergies': ['Dust'],
         'chronic_conditions': ['Hypertension'],
         'current_medications': [
-          {'name': 'Paracetamol', 'dose': '500mg', 'frequency': 'SOS'}
+          {'name': 'Paracetamol', 'dose': '500mg', 'frequency': 'SOS'},
         ],
         'abnormal_labs': ['High Cholesterol'],
         'past_visits': [
-          {'date': '2024-01-01', 'diagnosis': 'Routine checkup'}
+          {'date': '2024-01-01', 'diagnosis': 'Routine checkup'},
         ],
         'doctor_advice': 'Drink plenty of water',
       };
@@ -62,11 +63,7 @@ void main() {
       expect(data1.drugAllergies, isEmpty);
 
       // Malformed non-boolean is_medical_document (e.g. string "true" or int 1)
-      final malformedJson = {
-        'is_medical_document': 'true',
-        'document_type': 'prescription',
-        'blood_group': 'B+',
-      };
+      final malformedJson = {'is_medical_document': 'true', 'document_type': 'prescription', 'blood_group': 'B+'};
 
       final data2 = ExtractedMedicalData.fromMap(malformedJson);
       expect(data2.isMedicalDocument, isFalse);
@@ -152,11 +149,7 @@ void main() {
           {'name': 'Acute appendicitis', 'date': '12 Aug 2026'},
         ],
         'hospital_admissions': [
-          {
-            'admit_date': '12 Aug 2026',
-            'discharge_date': '16 Aug 2026',
-            'reason': 'acute appendicitis',
-          }
+          {'admit_date': '12 Aug 2026', 'discharge_date': '16 Aug 2026', 'reason': 'acute appendicitis'},
         ],
         'chronic_conditions': ['Hypertension'],
       };
@@ -180,14 +173,8 @@ void main() {
       expect(data.hospitalAdmissions[0].reason, equals('acute appendicitis'));
 
       // Check historical problems aggregates procedures and admissions
-      expect(
-        data.historicalProblems,
-        contains('Laparoscopic appendectomy (14 Aug 2026)'),
-      );
-      expect(
-        data.historicalProblems,
-        contains('Admission: acute appendicitis on 12 Aug 2026'),
-      );
+      expect(data.historicalProblems, contains('Laparoscopic appendectomy (14 Aug 2026)'));
+      expect(data.historicalProblems, contains('Admission: acute appendicitis on 12 Aug 2026'));
     });
 
     test('6. Task B: Medication timing, duration parsing, and status calculation', () {
@@ -195,93 +182,53 @@ void main() {
 
       // Past course ended (2026-08-01 + 5 days = 2026-08-06 < 2026-08-20)
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          '2026-08-01',
-          '5 days',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus('2026-08-01', '5 days', referenceDate: refDate),
         equals('Course ended'),
       );
 
       // Bangla digits and duration ended ('1 Aug 2026' + ২ সপ্তাহ (14 days) = 15 Aug 2026 < 20 Aug 2026)
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          '1 Aug 2026',
-          '২ সপ্তাহ',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus('1 Aug 2026', '২ সপ্তাহ', referenceDate: refDate),
         equals('Course ended'),
       );
 
       // Active course (2026-08-15 + 14 days = 2026-08-29 >= 2026-08-20)
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          '15 Aug 2026',
-          '14 days',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus('15 Aug 2026', '14 days', referenceDate: refDate),
         equals('Active'),
       );
 
       // Bangla 1 month active (2026-08-05 + ১ মাস (30 days) = 2026-09-04 >= 2026-08-20)
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          '5 Aug 2026',
-          '১ মাস',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus('5 Aug 2026', '১ মাস', referenceDate: refDate),
         equals('Active'),
       );
 
       // Indefinite / Ongoing / As needed
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          '1 Jan 2026',
-          'ongoing',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus('1 Jan 2026', 'ongoing', referenceDate: refDate),
         equals('Ongoing / as needed'),
       );
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          '1 Jan 2026',
-          'as needed',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus('1 Jan 2026', 'as needed', referenceDate: refDate),
         equals('Ongoing / as needed'),
       );
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          null,
-          'চলবে',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus(null, 'চলবে', referenceDate: refDate),
         equals('Ongoing / as needed'),
       );
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          null,
-          'প্রয়োজনমতো',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus(null, 'প্রয়োজনমতো', referenceDate: refDate),
         equals('Ongoing / as needed'),
       );
 
       // Unparsable / missing duration
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          '1 Aug 2026',
-          null,
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus('1 Aug 2026', null, referenceDate: refDate),
         equals('Duration not stated'),
       );
       expect(
-        GeminiAiService.calculateMedicationStatus(
-          '1 Aug 2026',
-          'some unknown note',
-          referenceDate: refDate,
-        ),
+        GeminiAiService.calculateMedicationStatus('1 Aug 2026', 'some unknown note', referenceDate: refDate),
         equals('Duration not stated'),
       );
 
@@ -303,7 +250,7 @@ void main() {
             'prescribed_date': '2026-08-15',
             'duration_text': 'ongoing',
           },
-        ]
+        ],
       };
 
       final data = ExtractedMedicalData.fromMap(medJson, referenceDate: refDate);
@@ -384,7 +331,8 @@ void main() {
     });
 
     test('9. Task E: Privacy sanitization of non-medical classification reason', () {
-      const reasonWithPii = 'Curriculum Vitae belonging to John Doe with email john@baust.edu.bd and phone +8801712345678';
+      const reasonWithPii =
+          'Curriculum Vitae belonging to John Doe with email john@baust.edu.bd and phone +8801712345678';
       final sanitized = GeminiAiService.sanitizeClassificationReason(reasonWithPii);
 
       expect(sanitized, isNot(contains('John Doe')));
@@ -412,62 +360,31 @@ void main() {
       expect(dateBangla, equals(DateTime(2026, 10, 5)));
 
       // Bangla date (05 Oct 2026) + 3 days -> ends on 08 Oct 2026 < 12 Oct 2026 -> Course ended
-      final statusParacetamolEnded = GeminiAiService.calculateMedicationStatus(
-        '০৫/১০/২৬',
-        '3 days',
-      );
+      final statusParacetamolEnded = GeminiAiService.calculateMedicationStatus('০৫/১০/২৬', '3 days');
       expect(statusParacetamolEnded, equals('Course ended'));
 
       // Bangla date (05 Oct 2026) + 14 days -> ends on 19 Oct 2026 >= 12 Oct 2026 -> Active
-      final statusActive = GeminiAiService.calculateMedicationStatus(
-        '০৫/১০/২৬',
-        '14 days',
-      );
+      final statusActive = GeminiAiService.calculateMedicationStatus('০৫/১০/২৬', '14 days');
       expect(statusActive, equals('Active'));
 
       // Missing prescribed date -> Prescribed date not stated (never Active)
-      final statusMissingDate = GeminiAiService.calculateMedicationStatus(
-        null,
-        '5 days',
-      );
+      final statusMissingDate = GeminiAiService.calculateMedicationStatus(null, '5 days');
       expect(statusMissingDate, equals('Prescribed date not stated'));
 
       // Ongoing / as needed keywords
-      expect(
-        GeminiAiService.calculateMedicationStatus(null, 'শ্বাসকষ্ট হলে ২ পাফ'),
-        equals('Ongoing / as needed'),
-      );
-      expect(
-        GeminiAiService.calculateMedicationStatus('05/10/26', 'ব্যথা হলে'),
-        equals('Ongoing / as needed'),
-      );
-      expect(
-        GeminiAiService.calculateMedicationStatus('05/10/26', 'PRN'),
-        equals('Ongoing / as needed'),
-      );
-      expect(
-        GeminiAiService.calculateMedicationStatus('05/10/26', 'SOS'),
-        equals('Ongoing / as needed'),
-      );
-      expect(
-        GeminiAiService.calculateMedicationStatus(null, 'চলবে'),
-        equals('Ongoing / as needed'),
-      );
-      expect(
-        GeminiAiService.calculateMedicationStatus(null, 'প্রয়োজনে'),
-        equals('Ongoing / as needed'),
-      );
+      expect(GeminiAiService.calculateMedicationStatus(null, 'শ্বাসকষ্ট হলে ২ পাফ'), equals('Ongoing / as needed'));
+      expect(GeminiAiService.calculateMedicationStatus('05/10/26', 'ব্যথা হলে'), equals('Ongoing / as needed'));
+      expect(GeminiAiService.calculateMedicationStatus('05/10/26', 'PRN'), equals('Ongoing / as needed'));
+      expect(GeminiAiService.calculateMedicationStatus('05/10/26', 'SOS'), equals('Ongoing / as needed'));
+      expect(GeminiAiService.calculateMedicationStatus(null, 'চলবে'), equals('Ongoing / as needed'));
+      expect(GeminiAiService.calculateMedicationStatus(null, 'প্রয়োজনে'), equals('Ongoing / as needed'));
 
       // Discharge summary fallback: discharge date 16 Aug 2026, 5 days duration -> ended on 21 Aug 2026 < 12 Oct 2026
       final dischargeJson = {
         'is_medical_document': true,
         'document_type': 'discharge_summary',
         'hospital_admissions': [
-          {
-            'admit_date': '12 Aug 2026',
-            'discharge_date': '16 Aug 2026',
-            'reason': 'acute appendicitis',
-          }
+          {'admit_date': '12 Aug 2026', 'discharge_date': '16 Aug 2026', 'reason': 'acute appendicitis'},
         ],
         'current_medications': [
           {
@@ -476,7 +393,7 @@ void main() {
             'frequency': 'BD',
             'prescribed_date': null,
             'duration_text': '5 days',
-          }
+          },
         ],
       };
       final dischargeData = ExtractedMedicalData.fromMap(dischargeJson);
@@ -515,11 +432,7 @@ void main() {
       final jsonWithFollowUp = {
         'is_medical_document': true,
         'follow_ups': [
-          {
-            'date': '12 Nov 2026',
-            'place': 'Outpatient Department',
-            'purpose': 'CBC & Chest X-Ray review',
-          }
+          {'date': '12 Nov 2026', 'place': 'Outpatient Department', 'purpose': 'CBC & Chest X-Ray review'},
         ],
         'doctor_advice': 'Take medications with food. Avoid cold drinks.',
       };
@@ -534,17 +447,15 @@ void main() {
       expect(data.doctorAdvice, equals('Take medications with food. Avoid cold drinks.'));
 
       // Empty follow_ups returns empty list
-      final jsonEmpty = {
-        'is_medical_document': true,
-        'follow_ups': [],
-      };
+      final jsonEmpty = {'is_medical_document': true, 'follow_ups': []};
       final dataEmpty = ExtractedMedicalData.fromMap(jsonEmpty);
       expect(dataEmpty.followUps, isEmpty);
     });
 
     test('13. Task 12: Friendly API error mapper (429 retryDelay, 503, timeout, config, network)', () {
       // 429 with retryDelay in seconds (e.g. 54000s -> ~15 hours)
-      const bodyWith54000s = '{"error": {"code": 429, "message": "Resource has been exhausted", "details": [{"retryDelay": "54000s"}]}}';
+      const bodyWith54000s =
+          '{"error": {"code": 429, "message": "Resource has been exhausted", "details": [{"retryDelay": "54000s"}]}}';
       final msg429Hours = GeminiAiService.mapHttpError(429, bodyWith54000s);
       expect(msg429Hours, equals('The AI service has reached its usage limit. Please try again in about 15 hours.'));
 
@@ -655,11 +566,7 @@ void main() {
 
       setUp(() {
         GeminiAiService.sleeper = (_) async {};
-        GeminiAiService.geminiApiKeys = [
-          'test_mock_api_key_1',
-          'test_mock_api_key_2',
-          'test_mock_api_key_3',
-        ];
+        GeminiAiService.geminiApiKeys = ['test_mock_api_key_1', 'test_mock_api_key_2', 'test_mock_api_key_3'];
         GeminiAiService.resetSessionState();
       });
 
@@ -739,7 +646,10 @@ void main() {
           recordedKeys.add(key);
 
           if (key == key0) {
-            return http.Response('{"error": {"code": 403, "message": "Permission denied", "status": "PERMISSION_DENIED"}}', 403);
+            return http.Response(
+              '{"error": {"code": 403, "message": "Permission denied", "status": "PERMISSION_DENIED"}}',
+              403,
+            );
           }
           return http.Response(mockValidGeminiResponse, 200);
         });
@@ -766,67 +676,66 @@ void main() {
         });
 
         final serviceNext = GeminiAiService(httpClient: clientNext);
-        await serviceNext.extractMedicalJson(
-          fileName: 'prescription.pdf',
-          fileSizeBytes: 1024,
-          fileBytes: sampleBytes,
-        );
+        await serviceNext.extractMedicalJson(fileName: 'prescription.pdf', fileSizeBytes: 1024, fileBytes: sampleBytes);
 
         expect(nextCallKeys, isNot(contains(key0)));
         expect(nextCallKeys, contains(key1));
       });
 
       // 15.4: 404 model skip -> marks model as unavailable, never retries it, moves to next model
-      test('15.4: 404 Not Found marks model as unavailable, skips remaining keys for it, and advances to next model', () async {
-        final recordedModels = <String>[];
+      test(
+        '15.4: 404 Not Found marks model as unavailable, skips remaining keys for it, and advances to next model',
+        () async {
+          final recordedModels = <String>[];
 
-        final client404 = _TestHttpClient((request) async {
-          final path = request.url.path;
-          if (path.contains('gemini-3.5-flash')) {
-            recordedModels.add('gemini-3.5-flash');
-            return http.Response('{"error": {"code": 404, "message": "Model not found"}}', 404);
-          } else if (path.contains('gemini-3.1-flash-lite')) {
-            recordedModels.add('gemini-3.1-flash-lite');
+          final client404 = _TestHttpClient((request) async {
+            final path = request.url.path;
+            if (path.contains('gemini-3.5-flash')) {
+              recordedModels.add('gemini-3.5-flash');
+              return http.Response('{"error": {"code": 404, "message": "Model not found"}}', 404);
+            } else if (path.contains('gemini-3.1-flash-lite')) {
+              recordedModels.add('gemini-3.1-flash-lite');
+              return http.Response(mockValidGeminiResponse, 200);
+            }
             return http.Response(mockValidGeminiResponse, 200);
-          }
-          return http.Response(mockValidGeminiResponse, 200);
-        });
+          });
 
-        final service = GeminiAiService(httpClient: client404);
-        final result = await service.extractMedicalJson(
-          fileName: 'prescription.pdf',
-          fileSizeBytes: 1024,
-          fileBytes: sampleBytes,
-        );
+          final service = GeminiAiService(httpClient: client404);
+          final result = await service.extractMedicalJson(
+            fileName: 'prescription.pdf',
+            fileSizeBytes: 1024,
+            fileBytes: sampleBytes,
+          );
 
-        expect(result['is_medical_document'], isTrue);
-        expect(recordedModels, contains('gemini-3.5-flash'));
-        expect(recordedModels, contains('gemini-3.1-flash-lite'));
-        expect(GeminiAiService.isModelUnavailable('gemini-3.5-flash'), isTrue);
-        expect(GeminiAiService.isModelUnavailable('gemini-3.1-flash-lite'), isFalse);
+          expect(result['is_medical_document'], isTrue);
+          expect(recordedModels, contains('gemini-3.5-flash'));
+          expect(recordedModels, contains('gemini-3.1-flash-lite'));
+          expect(GeminiAiService.isModelUnavailable('gemini-3.5-flash'), isTrue);
+          expect(GeminiAiService.isModelUnavailable('gemini-3.1-flash-lite'), isFalse);
 
-        // Subsequent call must NEVER retry gemini-3.5-flash
-        final subsequentModels = <String>[];
-        final clientSubsequent = _TestHttpClient((request) async {
-          final path = request.url.path;
-          if (path.contains('gemini-3.5-flash')) {
-            subsequentModels.add('gemini-3.5-flash');
-          } else if (path.contains('gemini-3.1-flash-lite')) {
-            subsequentModels.add('gemini-3.1-flash-lite');
-          }
-          return http.Response(mockValidGeminiResponse, 200);
-        });
+          // Subsequent call must NEVER retry gemini-3.5-flash
+          final subsequentModels = <String>[];
+          final clientSubsequent = _TestHttpClient((request) async {
+            final path = request.url.path;
+            if (path.contains('gemini-3.5-flash')) {
+              subsequentModels.add('gemini-3.5-flash');
+            } else if (path.contains('gemini-3.1-flash-lite')) {
+              subsequentModels.add('gemini-3.1-flash-lite');
+            }
+            return http.Response(mockValidGeminiResponse, 200);
+          });
 
-        final serviceSubsequent = GeminiAiService(httpClient: clientSubsequent);
-        await serviceSubsequent.extractMedicalJson(
-          fileName: 'prescription.pdf',
-          fileSizeBytes: 1024,
-          fileBytes: sampleBytes,
-        );
+          final serviceSubsequent = GeminiAiService(httpClient: clientSubsequent);
+          await serviceSubsequent.extractMedicalJson(
+            fileName: 'prescription.pdf',
+            fileSizeBytes: 1024,
+            fileBytes: sampleBytes,
+          );
 
-        expect(subsequentModels, isNot(contains('gemini-3.5-flash')));
-        expect(subsequentModels, contains('gemini-3.1-flash-lite'));
-      });
+          expect(subsequentModels, isNot(contains('gemini-3.5-flash')));
+          expect(subsequentModels, contains('gemini-3.1-flash-lite'));
+        },
+      );
 
       // 15.5: all-fail friendly message -> shows friendly manual form message
       test('15.5: When all models and keys fail, throws friendly manual fallback message', () async {
@@ -836,11 +745,7 @@ void main() {
 
         final service = GeminiAiService(httpClient: clientAllFail);
         await expectLater(
-          () => service.extractMedicalJson(
-            fileName: 'prescription.pdf',
-            fileSizeBytes: 1024,
-            fileBytes: sampleBytes,
-          ),
+          () => service.extractMedicalJson(fileName: 'prescription.pdf', fileSizeBytes: 1024, fileBytes: sampleBytes),
           throwsA(
             isA<GeminiApiException>().having(
               (e) => e.userMessage,
@@ -861,10 +766,6 @@ class _TestHttpClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final response = await handler(request as http.Request);
-    return http.StreamedResponse(
-      Stream.value(response.bodyBytes),
-      response.statusCode,
-      headers: response.headers,
-    );
+    return http.StreamedResponse(Stream.value(response.bodyBytes), response.statusCode, headers: response.headers);
   }
 }

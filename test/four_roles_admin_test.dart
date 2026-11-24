@@ -23,29 +23,43 @@ final _users = <Map<String, dynamic>>[
   {'uid': 'sa', 'displayName': 'Super Admin', 'email': 'super@baust.edu.bd', 'role': 'superadmin'},
   {'uid': 'd1', 'displayName': 'Dr. Fowzia', 'email': 'doc@baust.edu.bd', 'role': 'doctor'},
   {'uid': 'n1', 'displayName': 'Nurse Rina', 'email': 'nurse@baust.edu.bd', 'role': 'nurse'},
-  {'uid': 's1', 'displayName': 'Sajol Hassan', 'email': 'sajol@baust.edu.bd', 'role': 'student', 'studentRoll': '0802420205101137'},
-  {'uid': 's2', 'displayName': 'Removed Student', 'email': 'gone@baust.edu.bd', 'role': 'student', 'accountStatus': 'removed'},
+  {
+    'uid': 's1',
+    'displayName': 'Sajol Hassan',
+    'email': 'sajol@baust.edu.bd',
+    'role': 'student',
+    'studentRoll': '0802420205101137',
+  },
+  {
+    'uid': 's2',
+    'displayName': 'Removed Student',
+    'email': 'gone@baust.edu.bd',
+    'role': 'student',
+    'accountStatus': 'removed',
+  },
 ];
 
 Future<void> _pump(WidgetTester tester, UserProfile actor, Widget child) async {
   tester.view.physicalSize = const Size(1200, 2400);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
-  await tester.pumpWidget(ProviderScope(
-    overrides: [
-      authControllerProvider.overrideWith(
-        () => _MockAuthNotifier(AuthState(status: AuthStatus.authenticated, userProfile: actor)),
-      ),
-    ],
-    child: MaterialApp(home: child),
-  ));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _MockAuthNotifier(AuthState(status: AuthStatus.authenticated, userProfile: actor)),
+        ),
+      ],
+      child: MaterialApp(home: child),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
 void main() {
   group('Role model', () {
     test('four app roles; legacy clinical roles map to doctor', () {
-      expect(UserProfile.appRoles, ['student', 'doctor', 'admin', 'superadmin']);
+      expect(UserProfile.appRoles, ['student', 'doctor', 'pharmacist', 'admin', 'superadmin']);
       const nurse = UserProfile(uid: 'n', email: 'n@baust.edu.bd', displayName: 'N', role: 'nurse');
       expect(nurse.appRole, 'doctor');
     });
@@ -59,8 +73,8 @@ void main() {
 
     test('admins manage students & doctors; only super admins manage admins; nobody manages super admins or self', () {
       Map<String, dynamic> u(String uid) => _users.firstWhere((e) => e['uid'] == uid);
-      expect(UserAdminService.assignableRoles(_admin), ['student', 'doctor']);
-      expect(UserAdminService.assignableRoles(_super), ['student', 'doctor', 'admin']);
+      expect(UserAdminService.assignableRoles(_admin), ['student', 'doctor', 'pharmacist']);
+      expect(UserAdminService.assignableRoles(_super), ['student', 'doctor', 'pharmacist', 'admin']);
 
       expect(UserAdminService.canManage(_admin, u('s1')), isTrue);
       expect(UserAdminService.canManage(_admin, u('d1')), isTrue);
@@ -93,10 +107,14 @@ void main() {
     expect(find.text('Removed Student'), findsNothing); // hidden from active list
     expect(find.text('Nurse Rina'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Removed (1)'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Removed (1)'));
     await tester.pumpAndSettle();
     expect(find.text('Removed Student'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('All (6)'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('All (6)'));
     await tester.pumpAndSettle();
 
@@ -123,10 +141,7 @@ void main() {
     await _pump(
       tester,
       _super,
-      UserManagementScreen(
-        usersStreamOverride: () => Stream.value(_users),
-        onCreateOverride: (f) async => created = f,
-      ),
+      UserManagementScreen(usersStreamOverride: () => Stream.value(_users), onCreateOverride: (f) async => created = f),
     );
     await tester.tap(find.text('Add user'));
     await tester.pumpAndSettle();
@@ -165,11 +180,13 @@ void main() {
       tester,
       _super,
       FeedbackInboxScreen(
-        streamOverride: (status) => Stream.value(status == 'open'
-            ? [
-                {'id': 'f1', 'type': 'bug', 'message': 'Crash on login', 'displayName': 'S', 'role': 'student'},
-              ]
-            : const []),
+        streamOverride: (status) => Stream.value(
+          status == 'open'
+              ? [
+                  {'id': 'f1', 'type': 'bug', 'message': 'Crash on login', 'displayName': 'S', 'role': 'student'},
+                ]
+              : const [],
+        ),
         onSetStatusOverride: (id, s) async => updates.add('$id:$s'),
       ),
     );

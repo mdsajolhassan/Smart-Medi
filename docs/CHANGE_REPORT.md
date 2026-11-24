@@ -145,21 +145,66 @@ Firestore rules unit tests (`rules_tests/`) need the emulator: `firebase emulato
 
 ---
 
-## 10. Deployment status (pending)
+## 10. Deployment status
 
 **GitHub:** PR #10 merged into `main` on 24 Nov 2026 (`e14d2f2`).
 
-**Vercel (not set up yet):**
-* The repo is connected to two Vercel projects, `smart_medi` and `smart-medi`, both owned by the repo owner's Vercel team
-  (`sajol2`). Environment variables can only be added there by a member of that team.
-* `vercel.json` only defines rewrites and headers. There is no build command, so Vercel does not run `flutter build web`.
-* The Flutter web build needs a `.env` file (it is bundled as an asset), and `.env` is git-ignored.
+**Live on Firebase Hosting (25 Nov 2026):** https://smart-medi-galib.web.app
+* Vercel was dropped: `vercel.json` is removed, and its rewrites and security headers now live in the `hosting`
+  section of `firebase.json`.
+* The cache lifetime for `/assets/**` is now 1 day. It was 1 year (immutable), which Flutter's unhashed asset names
+  don't allow. `/`, `index.html`, `main.dart.js` and the service worker are never cached.
+* Firestore rules are deployed from `firestore.rules`.
 
-**Plan for later:**
-1. Use a Vercel project you control (your own account, or get added to the `sajol2` team).
-2. Add the variables from `.env.example` as Vercel environment variables (`GEMINI_API_KEY_1`, `ALT_AI_API_KEY`,
-   `ALT_AI_MODELS`, `AI_PRIMARY_PROVIDER`, …).
-3. Add a build step that installs Flutter, writes `.env` from those variables, runs `flutter build web --release`,
-   and serves `build/web` (`outputDirectory`).
-4. Before going public: rotate the OpenRouter/Gemini keys (they were shared in chat), and ideally move AI calls to a
-   Cloud Function, because anything in `.env` ends up readable in the deployed web files.
+**To redeploy:**
+```
+flutter build web --release
+firebase deploy --only hosting        # add firestore:rules when the rules change
+```
+The build needs a local `.env` (it is bundled as an asset; `.env` is git-ignored).
+
+**Known risk (accepted for now):** `.env` is published with the site, so the Gemini and OpenRouter keys can be read
+at `/assets/.env`. Rotate those keys and move AI calls to a Cloud Function (needs the Blaze plan) so that the keys
+stay on the server.
+
+---
+
+## 11. Update — 25 Nov 2026
+
+**Roles:** a new **pharmacist** role now runs the pharmacy. Admins create pharmacists in User Management. Doctors and admins see stock read-only.
+
+**Doctor:**
+* Each SOS alert can be logged to the check-in log only once.
+* Resolving an alert closes every open alert for that patient.
+* The patient report is grouped: recent prescriptions, recent upload, then the full timeline.
+* Prescriptions support pharmacy-stock picking, custom medicines (reported to admin) and tests referred.
+* Patients can download prescriptions as PDF.
+
+**Pharmacy:**
+* Each medicine records full details, including expiry date and batch.
+* Pharmacists can add, edit and remove medicines.
+* Stock updates are atomic.
+* Admins see a Stock Alerts screen (low stock or expiry) and can notify the pharmacist.
+
+**SOS:**
+* Each patient has at most one active alert.
+* A repeat press within 15 minutes of an alert no doctor has acted on yet updates that alert.
+* The super admin's SOS testing monitor is removed.
+
+**Privacy and UI:**
+* The super admin can no longer open other users' portals.
+* The feedback / bug report button is now on every role's top bar.
+* Google sign-in is removed.
+* Sign-out now returns to the login screen immediately.
+* Animations added.
+
+**Fixes from a full code review:**
+* Pharmacy stock can no longer be re-seeded by accident or lose concurrent changes.
+* Out-of-stock medicines are flagged.
+* Duplicate medications no longer show in the doctor view.
+* Environmental allergies are no longer dropped.
+* The ID card check requires the full roll number.
+
+**Hosting:** moved from Vercel to Firebase Hosting (https://smart-medi-galib.web.app). `vercel.json` is removed, along with the outdated `README_PHASE1_SECURITY.md` and `PROJECT_DOCUMENTATION.md`.
+
+**Tests:** 143 passing.

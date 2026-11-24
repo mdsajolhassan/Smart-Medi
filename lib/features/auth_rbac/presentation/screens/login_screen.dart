@@ -343,54 +343,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
 
                                       const SizedBox(height: 12),
 
-                                      // OR Divider
-                                      Row(
-                                        children: [
-                                          Expanded(child: Divider(color: Colors.grey.shade300)),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                                            child: Text(
-                                              'OR',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.grey.shade500,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(child: Divider(color: Colors.grey.shade300)),
-                                        ],
-                                      ),
-
-                                      const SizedBox(height: 12),
-
-                                      // Prominent "Continue with Google" Button
-                                      OutlinedButton.icon(
-                                        style: OutlinedButton.styleFrom(
-                                          backgroundColor: Colors.white,
-                                          foregroundColor: BaustColors.textDark,
-                                          minimumSize: const Size(double.infinity, 48),
-                                          side: BorderSide(color: Colors.grey.shade300),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        ),
-                                        icon: Image.network(
-                                          'https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png',
-                                          height: 20,
-                                          width: 20,
-                                          errorBuilder: (context, error, stackTrace) =>
-                                              const Icon(Icons.g_mobiledata, size: 24, color: Colors.red),
-                                        ),
-                                        label: const Text(
-                                          'Continue with Google',
-                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                                        ),
-                                        onPressed: isLoading
-                                            ? null
-                                            : () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
-                                      ),
-
-                                      const SizedBox(height: 12),
-
                                       // Don't have an account? Sign Up Row
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.center,

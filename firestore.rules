@@ -75,7 +75,7 @@ service cloud.firestore {
 
     // Roles the caller may assign to other accounts
     function assignableRoles() {
-      return isSuperAdmin() ? ['student', 'doctor', 'admin'] : ['student', 'doctor'];
+      return isSuperAdmin() ? ['student', 'doctor', 'pharmacist', 'admin'] : ['student', 'doctor', 'pharmacist'];
     }
 
     function isPharmacist() {
@@ -239,6 +239,13 @@ service cloud.firestore {
       allow read: if (isMember() && resource.data.studentId == request.auth.uid) || isDoctor() || isAdmin();
 
       allow update: if isDoctor() || isAdmin();
+      // A student pressing SOS again may refresh their own alert while no doctor has acted on it yet.
+      allow update: if isMember()
+        && resource.data.studentId == request.auth.uid
+        && resource.data.status == 'TRIGGERED'
+        && request.resource.data.status == 'TRIGGERED'
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['hall', 'roomNumber', 'symptomCategory', 'optionalNote', 'triggeredAt']);
       allow delete: if false;
     }
 
@@ -263,8 +270,9 @@ service cloud.firestore {
     // 8. inventory/{itemId}
     // =========================================================================
     match /inventory/{itemId} {
-      allow read: if isMember();
-      allow write: if isDoctor() || isAdmin() || isPharmacist();
+      // Pharmacy is managed by the pharmacist; doctors and admins can only view stock.
+      allow read: if isMember() || isDoctor() || isAdmin() || isPharmacist();
+      allow write: if isPharmacist();
     }
 
     // =========================================================================
@@ -320,7 +328,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
              'studentUid', 'studentId', 'studentName', 'doctorUid', 'doctorName',
              'doctorDesignation', 'diagnosis', 'items', 'advice', 'followUpDate',
-             'source', 'createdAt'
+             'source', 'createdAt', 'testsReferred'
            ])
         && request.resource.data.keys().hasAll([
              'studentUid', 'studentId', 'studentName', 'doctorUid', 'doctorName',
@@ -387,6 +395,41 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['status', 'adminNote', 'resolvedBy', 'updatedAt']);
       allow delete: if isSuperAdmin();
+    }
+
+    // =========================================================================
+    // custom_medicine_requests/{id}: doctors report unstocked medicines; admins review
+    // =========================================================================
+    match /custom_medicine_requests/{id} {
+      allow create: if isDoctor()
+        && request.resource.data.doctorUid == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+             'medicineName', 'doctorUid', 'doctorName', 'prescriptionId', 'studentId', 'status', 'createdAt'
+           ])
+        && request.resource.data.medicineName is string
+        && request.resource.data.medicineName.size() <= 200
+        && request.resource.data.status == 'pending';
+      allow read: if isAdmin() || (isDoctor() && resource.data.doctorUid == request.auth.uid);
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+        && request.resource.data.status in ['pending', 'forwarded', 'dismissed'];
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // pharmacy_notifications/{id}: admin -> pharmacist notices (low stock, expiry, custom medicine)
+    // =========================================================================
+    match /pharmacy_notifications/{id} {
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['type', 'message', 'itemId', 'medicineName', 'status', 'sentBy', 'createdAt'])
+        && request.resource.data.status == 'unread'
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 500;
+      allow read: if isAdmin() || isPharmacist();
+      allow update: if isPharmacist()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'doneAt'])
+        && request.resource.data.status == 'done';
+      allow delete: if isAdmin();
     }
 
     // =========================================================================

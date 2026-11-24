@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,14 +108,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Amber note should appear
-      expect(
-        find.text('No allergy information on file - confirm with patient.'),
-        findsOneWidget,
-      );
+      expect(find.text('No allergy information on file - confirm with patient.'), findsOneWidget);
       expect(find.text('Blood Group: Unverified'), findsOneWidget);
     });
 
-    testWidgets('Allergy conflict banner appears for Amoxicillin when patient is allergic to Penicillin', (tester) async {
+    testWidgets('Allergy conflict banner appears for Amoxicillin when patient is allergic to Penicillin', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -150,7 +150,9 @@ void main() {
 
       // Allergy conflict banner must appear on row
       expect(
-        find.textContaining('Possible allergy conflict: patient reported Penicillin (AI-extracted, unverified - confirm with patient)'),
+        find.textContaining(
+          'Possible allergy conflict: patient reported Penicillin (AI-extracted, unverified - confirm with patient)',
+        ),
         findsOneWidget,
       );
 
@@ -175,10 +177,7 @@ void main() {
       expect(find.text('I have checked with the patient'), findsOneWidget);
 
       // Dialog button disabled or guarded until checkbox is ticked
-      final dialogIssueBtn = find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.text('Issue Prescription'),
-      );
+      final dialogIssueBtn = find.descendant(of: find.byType(AlertDialog), matching: find.text('Issue Prescription'));
       expect(dialogIssueBtn, findsOneWidget);
 
       // Tick checkbox
@@ -200,7 +199,9 @@ void main() {
   });
 
   group('3. Detailed Medical History & Timeline Student Prescription Tests', () {
-    testWidgets('DetailedMedicalHistoryScreen shows issued digital prescription in timeline and prescription section', (tester) async {
+    testWidgets('DetailedMedicalHistoryScreen shows issued digital prescription in timeline and prescription section', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -250,9 +251,7 @@ void main() {
         ProviderScope(
           overrides: [
             authControllerProvider.overrideWith(
-              () => _MockAuthNotifier(
-                AuthState(status: AuthStatus.authenticated, userProfile: studentProfile),
-              ),
+              () => _MockAuthNotifier(AuthState(status: AuthStatus.authenticated, userProfile: studentProfile)),
             ),
           ],
           child: MaterialApp(
@@ -289,16 +288,14 @@ void main() {
   });
 
   group('3. Paper Prescription Scanning & Form Pre-fill Tests', () {
-    testWidgets('Scanning valid paper prescription pre-fills fields and shows "AI-extracted - verify" badges', (tester) async {
+    testWidgets('Scanning valid paper prescription pre-fills fields and shows "AI-extracted - verify" badges', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final mockFile = PlatformFile(
-        name: 'rx_paper.jpg',
-        size: 1024 * 100,
-        bytes: Uint8List.fromList([1, 2, 3]),
-      );
+      final mockFile = PlatformFile(name: 'rx_paper.jpg', size: 1024 * 100, bytes: Uint8List.fromList([1, 2, 3]));
 
       final mockExtraction = ExtractedMedicalData(
         isMedicalDocument: true,
@@ -309,12 +306,7 @@ void main() {
         bloodGroupSource: 'not_found',
         chronicConditions: const [],
         currentMedications: const [
-          MedicationItem(
-            name: 'Azithromycin 500mg',
-            dose: '1 tablet',
-            frequency: '1+0+0',
-            durationText: '3 days',
-          ),
+          MedicationItem(name: 'Azithromycin 500mg', dose: '1 tablet', frequency: '1+0+0', durationText: '3 days'),
         ],
         abnormalLabs: const [],
         pastVisits: const [],
@@ -370,11 +362,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final mockFile = PlatformFile(
-        name: 'rx_paper.png',
-        size: 5000,
-        bytes: Uint8List.fromList([1, 2, 3]),
-      );
+      final mockFile = PlatformFile(name: 'rx_paper.png', size: 5000, bytes: Uint8List.fromList([1, 2, 3]));
 
       final mockExtraction = ExtractedMedicalData(
         isMedicalDocument: true,
@@ -385,12 +373,7 @@ void main() {
         bloodGroupSource: 'not_found',
         chronicConditions: const [],
         currentMedications: const [
-          MedicationItem(
-            name: 'Napa 500mg',
-            dose: '1 tablet',
-            frequency: '1+1+1',
-            durationText: '3 days',
-          ),
+          MedicationItem(name: 'Napa 500mg', dose: '1 tablet', frequency: '1+1+1', durationText: '3 days'),
         ],
         abnormalLabs: const [],
         pastVisits: const [],
@@ -436,11 +419,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final mockFile = PlatformFile(
-        name: 'other_student_rx.jpg',
-        size: 1024,
-        bytes: Uint8List.fromList([1, 2]),
-      );
+      final mockFile = PlatformFile(name: 'other_student_rx.jpg', size: 1024, bytes: Uint8List.fromList([1, 2]));
 
       final mockExtraction = ExtractedMedicalData(
         isMedicalDocument: true,
@@ -451,12 +430,7 @@ void main() {
         bloodGroupSource: 'not_found',
         chronicConditions: const [],
         currentMedications: const [
-          MedicationItem(
-            name: 'Omeprazole 20mg',
-            dose: '1 cap',
-            frequency: '1+0+1',
-            durationText: '7 days',
-          ),
+          MedicationItem(name: 'Omeprazole 20mg', dose: '1 cap', frequency: '1+0+1', durationText: '7 days'),
         ],
         abnormalLabs: const [],
         pastVisits: const [],
@@ -484,10 +458,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Prominent red banner must be shown
-      expect(
-        find.text('Name on document does not match this patient - verify before issuing.'),
-        findsOneWidget,
-      );
+      expect(find.text('Name on document does not match this patient - verify before issuing.'), findsOneWidget);
       expect(find.textContaining('Document Name: Kazi Farhan Ahmed'), findsOneWidget);
     });
 
@@ -496,11 +467,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final mockFile = PlatformFile(
-        name: 'rx_no_name.jpg',
-        size: 1024,
-        bytes: Uint8List.fromList([1, 2]),
-      );
+      final mockFile = PlatformFile(name: 'rx_no_name.jpg', size: 1024, bytes: Uint8List.fromList([1, 2]));
 
       final mockExtraction = ExtractedMedicalData(
         isMedicalDocument: true,
@@ -511,12 +478,7 @@ void main() {
         bloodGroupSource: 'not_found',
         chronicConditions: const [],
         currentMedications: const [
-          MedicationItem(
-            name: 'Cefixime 200mg',
-            dose: '1 cap',
-            frequency: '1+0+1',
-            durationText: '5 days',
-          ),
+          MedicationItem(name: 'Cefixime 200mg', dose: '1 cap', frequency: '1+0+1', durationText: '5 days'),
         ],
         abnormalLabs: const [],
         pastVisits: const [],
@@ -552,11 +514,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final mockFile = PlatformFile(
-        name: 'resume.pdf',
-        size: 2048,
-        bytes: Uint8List.fromList([1, 2]),
-      );
+      final mockFile = PlatformFile(name: 'resume.pdf', size: 2048, bytes: Uint8List.fromList([1, 2]));
 
       final mockNonMedical = ExtractedMedicalData(
         isMedicalDocument: false,
@@ -593,7 +551,9 @@ void main() {
 
       // Fixed rejection message
       expect(
-        find.text('This does not look like a medical document. This looks like a non-medical document such as a CV, invoice or ID card.'),
+        find.text(
+          'This does not look like a medical document. This looks like a non-medical document such as a CV, invoice or ID card.',
+        ),
         findsOneWidget,
       );
 
@@ -641,16 +601,14 @@ void main() {
       expect(find.text('File is larger than 5 MB. Please upload a smaller file.'), findsOneWidget);
     });
 
-    testWidgets('Nothing is saved automatically; saving requires Issue Prescription and confirms with source "scan"', (tester) async {
+    testWidgets('Nothing is saved automatically; saving requires Issue Prescription and confirms with source "scan"', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final mockFile = PlatformFile(
-        name: 'paper_rx.jpg',
-        size: 1024,
-        bytes: Uint8List.fromList([1, 2]),
-      );
+      final mockFile = PlatformFile(name: 'paper_rx.jpg', size: 1024, bytes: Uint8List.fromList([1, 2]));
 
       final mockExtraction = ExtractedMedicalData(
         isMedicalDocument: true,
@@ -661,12 +619,7 @@ void main() {
         bloodGroupSource: 'not_found',
         chronicConditions: const [],
         currentMedications: const [
-          MedicationItem(
-            name: 'Paracetamol 500mg',
-            dose: '1 tablet',
-            frequency: '1+0+1',
-            durationText: '3 days',
-          ),
+          MedicationItem(name: 'Paracetamol 500mg', dose: '1 tablet', frequency: '1+0+1', durationText: '3 days'),
         ],
         abnormalLabs: const [],
         pastVisits: const [],
@@ -713,10 +666,7 @@ void main() {
       expect(find.text('Source: Digitized from paper scan'), findsOneWidget);
 
       // Confirm in dialog
-      final confirmBtn = find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.text('Issue Prescription'),
-      );
+      final confirmBtn = find.descendant(of: find.byType(AlertDialog), matching: find.text('Issue Prescription'));
       await tester.tap(confirmBtn);
       await tester.pumpAndSettle();
 
@@ -727,7 +677,9 @@ void main() {
       expect(savedPrescription!.items.first.name, equals('Paracetamol 500mg'));
     });
 
-    testWidgets('DetailedMedicalHistoryScreen displays "(digitized from paper)" when rx.source is "scan"', (tester) async {
+    testWidgets('DetailedMedicalHistoryScreen displays "(digitized from paper)" when rx.source is "scan"', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -742,12 +694,7 @@ void main() {
         doctorDesignation: 'Senior Medical Officer',
         diagnosis: 'Acute Sinusitis',
         items: const [
-          PrescriptionItem(
-            name: 'Amoxicillin 500mg',
-            dose: '1 capsule',
-            frequency: '1+1+1',
-            duration: '7 days',
-          ),
+          PrescriptionItem(name: 'Amoxicillin 500mg', dose: '1 capsule', frequency: '1+1+1', duration: '7 days'),
         ],
         source: 'scan',
         createdAt: DateTime(2026, 10, 13, 11, 0),
@@ -764,25 +711,17 @@ void main() {
         ProviderScope(
           overrides: [
             authControllerProvider.overrideWith(
-              () => _MockAuthNotifier(
-                AuthState(status: AuthStatus.authenticated, userProfile: studentProfile),
-              ),
+              () => _MockAuthNotifier(AuthState(status: AuthStatus.authenticated, userProfile: studentProfile)),
             ),
           ],
           child: MaterialApp(
-            home: DetailedMedicalHistoryScreen(
-              initialPrescriptions: [scannedRx],
-              isDoctorView: false,
-            ),
+            home: DetailedMedicalHistoryScreen(initialPrescriptions: [scannedRx], isDoctorView: false),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Issued by BAUST Medical Center - Dr. Md Nakib Hayat (digitized from paper)'),
-        findsOneWidget,
-      );
+      expect(find.text('Issued by BAUST Medical Center - Dr. Md Nakib Hayat (digitized from paper)'), findsOneWidget);
     });
 
     test('PrescriptionPdfService generates PDF with digitized footer when rx.source is "scan"', () async {
@@ -796,12 +735,7 @@ void main() {
         doctorDesignation: 'Senior Medical Officer',
         diagnosis: 'Allergic Rhinitis',
         items: const [
-          PrescriptionItem(
-            name: 'Fexofenadine 120mg',
-            dose: '1 tablet',
-            frequency: '0+0+1',
-            duration: '10 days',
-          ),
+          PrescriptionItem(name: 'Fexofenadine 120mg', dose: '1 tablet', frequency: '0+0+1', duration: '10 days'),
         ],
         source: 'scan',
         createdAt: DateTime(2026, 10, 13, 12, 0),

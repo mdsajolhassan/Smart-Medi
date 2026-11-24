@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/baust_constants.dart';
 import '../controllers/auth_controller.dart';
+import '../../../../features/admin_portal/presentation/screens/feedback_screens.dart';
 
 class EmailVerificationScreen extends ConsumerStatefulWidget {
   const EmailVerificationScreen({super.key});
@@ -98,6 +99,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
       appBar: AppBar(
         title: const Text('Verify Your Email'),
         actions: [
+          const FeedbackIconButton(),
           IconButton(
             tooltip: 'Sign Out',
             icon: const Icon(Icons.logout_rounded),

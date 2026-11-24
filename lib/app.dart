@@ -15,8 +15,12 @@ import 'features/dashboard/presentation/screens/main_dashboard_screen.dart';
 import 'features/medical_onboarding_ai/presentation/screens/profile_setup_screen.dart';
 import 'features/medical_onboarding_ai/presentation/screens/medical_onboarding_screen.dart';
 import 'features/medical_operations/presentation/screens/doctor_dashboard_screen.dart';
+import 'features/medical_operations/presentation/screens/pharmacist_inventory_screen.dart';
 import 'features/admin_portal/presentation/screens/admin_console_screen.dart';
 import 'features/auth_rbac/presentation/screens/account_removed_screen.dart';
+
+/// Root navigator, used to clear pushed screens when the user signs out.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class SmartMediApp extends ConsumerWidget {
   const SmartMediApp({super.key});
@@ -25,7 +29,17 @@ class SmartMediApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
 
+    // On sign-out, drop every pushed route (dashboards, lookups, dialogs)
+    // so the login screen appears immediately without a manual refresh.
+    ref.listen<AuthState>(authControllerProvider, (prev, next) {
+      final signedOut = next.status == AuthStatus.unauthenticated && prev?.status != AuthStatus.unauthenticated;
+      if (signedOut) {
+        rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+      }
+    });
+
     return MaterialApp(
+      navigatorKey: rootNavigatorKey,
       title: 'Smart Medi — BAUST',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
@@ -37,7 +51,18 @@ class SmartMediApp extends ConsumerWidget {
           child: child!,
         );
       },
-      home: _resolveHomeRoute(authState),
+      // Key on the user so a sign-out / sign-in fully rebuilds the home screen
+      // and no state from the previous account lingers.
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 450),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, anim) => FadeTransition(
+          opacity: anim,
+          child: ScaleTransition(scale: Tween(begin: 0.98, end: 1.0).animate(anim), child: child),
+        ),
+        child: KeyedSubtree(key: ValueKey(authState.userProfile?.uid ?? 'guest'), child: _resolveHomeRoute(authState)),
+      ),
     );
   }
 
@@ -83,8 +108,12 @@ class SmartMediApp extends ConsumerWidget {
         if (role == 'doctor' || role == 'medical_officer') {
           return const DoctorDashboardScreen();
         }
-        // Legacy clinical roles all use the doctor dashboard (4-role model)
-        if (role == 'pharmacist' || role == 'medical_assistant' || role == 'nurse') {
+        // Pharmacists run the pharmacy portal.
+        if (role == 'pharmacist') {
+          return const PharmacistInventoryScreen();
+        }
+        // Legacy clinical roles use the doctor dashboard
+        if (role == 'medical_assistant' || role == 'nurse') {
           // Medical Assistants & Nurses access Medical Center clinical operations & check-in log
           return const DoctorDashboardScreen();
         }

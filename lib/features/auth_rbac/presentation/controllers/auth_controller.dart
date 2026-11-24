@@ -1,16 +1,20 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
 import '../../../../core/config/auth_config.dart';
 import '../../../../core/constants/baust_constants.dart';
 import '../../../medical_onboarding_ai/data/services/gemini_ai_service.dart';
 
 class StudentIdAlreadyRegisteredException implements Exception {
   final String message;
-  StudentIdAlreadyRegisteredException([this.message = 'This student ID is already registered. Contact the medical center.']);
+  StudentIdAlreadyRegisteredException([
+    this.message = 'This student ID is already registered. Contact the medical center.',
+  ]);
   @override
   String toString() => message;
 }
@@ -89,10 +93,10 @@ class UserProfile {
   });
 
   /// The four application roles.
-  static const List<String> appRoles = ['student', 'doctor', 'admin', 'superadmin'];
+  static const List<String> appRoles = ['student', 'doctor', 'pharmacist', 'admin', 'superadmin'];
 
   /// Legacy clinical roles are treated as doctors.
-  static const Set<String> _legacyClinicalRoles = {'medical_officer', 'medical_assistant', 'nurse', 'pharmacist'};
+  static const Set<String> _legacyClinicalRoles = {'medical_officer', 'medical_assistant', 'nurse'};
 
   /// Role collapsed into one of [appRoles] (unknown legacy roles are returned unchanged).
   String get appRole {
@@ -115,10 +119,7 @@ class UserProfile {
   bool get isIdVerified =>
       idVerificationStatus == 'verified' || (idVerificationStatus == null && onboardingStatus == 'COMPLETED');
 
-  bool get isSuperAdmin =>
-      role == 'superadmin' ||
-      accessLevel == 'SuperAdmin' ||
-      AuthConfig.isSuperAdminEmail(email);
+  bool get isSuperAdmin => role == 'superadmin' || accessLevel == 'SuperAdmin' || AuthConfig.isSuperAdminEmail(email);
 
   /// Admins manage accounts; super admins are admins too.
   bool get isAdmin => role == 'admin' || isSuperAdmin;
@@ -141,9 +142,7 @@ class UserProfile {
     if (!isResidential) {
       return 'N/A';
     }
-    return (roomNumber != null && roomNumber!.trim().isNotEmpty && roomNumber != 'N/A')
-        ? roomNumber!
-        : '402-B';
+    return (roomNumber != null && roomNumber!.trim().isNotEmpty && roomNumber != 'N/A') ? roomNumber! : '402-B';
   }
 
   String get effectiveLocationSummary {
@@ -161,7 +160,8 @@ class UserProfile {
 
   factory UserProfile.fromFirestore(String uid, Map<String, dynamic> data) {
     final roll = (data['studentRoll'] ?? data['studentId'])?.toString();
-    final bool completed = data['profileCompleted'] as bool? ??
+    final bool completed =
+        data['profileCompleted'] as bool? ??
         (roll != null && roll.isNotEmpty && data['onboardingStatus'] != 'PROFILE_PENDING');
     String status = (data['onboardingStatus'] as String? ?? '').toUpperCase();
     if (status.isEmpty) {
@@ -173,7 +173,8 @@ class UserProfile {
     final verificationStatus = data['verificationStatus'] as String? ?? AuthConfig.computeVerificationStatus(email);
 
     final rawResidency = data['residencyStatus']?.toString().toLowerCase();
-    final isNonResHall = data['residentialHall'] == 'Non-resident (Day Scholar)' ||
+    final isNonResHall =
+        data['residentialHall'] == 'Non-resident (Day Scholar)' ||
         data['residentialHall'] == 'Non-Residential (Day Scholar)';
     final residency = rawResidency ?? (isNonResHall ? 'non_residential' : 'residential');
 
@@ -205,9 +206,7 @@ class UserProfile {
       bloodGroup: data['bloodGroup'] as String?,
       bloodGroupSource: data['bloodGroupSource'] as String?,
       bloodGroupVerified: data['bloodGroupVerified'] as bool? ?? false,
-      bmdcRegistrationNumber: (data['bmdcRegistrationNumber'] ??
-              data['bmdcRegNumber'] ??
-              data['registrationNumber'])
+      bmdcRegistrationNumber: (data['bmdcRegistrationNumber'] ?? data['bmdcRegNumber'] ?? data['registrationNumber'])
           ?.toString(),
       idVerificationStatus: data['idVerificationStatus'] as String?,
       idReviewNote: data['idReviewNote'] as String?,
@@ -271,15 +270,12 @@ class UserProfile {
       emailType: emailType ?? this.emailType,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       isWillingToDonateBlood: isWillingToDonateBlood ?? this.isWillingToDonateBlood,
-      isEligibleForBloodDonation:
-          isEligibleForBloodDonation ?? this.isEligibleForBloodDonation,
-      bloodDonationIneligibilityReason:
-          bloodDonationIneligibilityReason ?? this.bloodDonationIneligibilityReason,
+      isEligibleForBloodDonation: isEligibleForBloodDonation ?? this.isEligibleForBloodDonation,
+      bloodDonationIneligibilityReason: bloodDonationIneligibilityReason ?? this.bloodDonationIneligibilityReason,
       bloodGroup: bloodGroup ?? this.bloodGroup,
       bloodGroupSource: bloodGroupSource ?? this.bloodGroupSource,
       bloodGroupVerified: bloodGroupVerified ?? this.bloodGroupVerified,
-      bmdcRegistrationNumber:
-          bmdcRegistrationNumber ?? this.bmdcRegistrationNumber,
+      bmdcRegistrationNumber: bmdcRegistrationNumber ?? this.bmdcRegistrationNumber,
       idVerificationStatus: idVerificationStatus ?? this.idVerificationStatus,
       idReviewNote: idReviewNote ?? this.idReviewNote,
       accountStatus: accountStatus ?? this.accountStatus,
@@ -295,19 +291,11 @@ class AuthState {
   final UserProfile? userProfile;
   final String? errorMessage;
 
-  const AuthState({
-    required this.status,
-    this.userProfile,
-    this.errorMessage,
-  });
+  const AuthState({required this.status, this.userProfile, this.errorMessage});
 
   factory AuthState.initial() => const AuthState(status: AuthStatus.initial);
 
-  AuthState copyWith({
-    AuthStatus? status,
-    UserProfile? userProfile,
-    String? errorMessage,
-  }) {
+  AuthState copyWith({AuthStatus? status, UserProfile? userProfile, String? errorMessage}) {
     return AuthState(
       status: status ?? this.status,
       userProfile: userProfile ?? this.userProfile,
@@ -343,14 +331,17 @@ class AuthNotifier extends Notifier<AuthState> {
           state = const AuthState(status: AuthStatus.unauthenticated);
         } else {
           // Optimization: Skip redundant background profile loading if already authenticated
-          if (state.status == AuthStatus.authenticated &&
-              state.userProfile?.uid == firebaseUser.uid) {
-            debugPrint('[Auth] ℹ️ authStateChanges: User ${firebaseUser.uid} already authenticated, skipping redundant load.');
+          if (state.status == AuthStatus.authenticated && state.userProfile?.uid == firebaseUser.uid) {
+            debugPrint(
+              '[Auth] ℹ️ authStateChanges: User ${firebaseUser.uid} already authenticated, skipping redundant load.',
+            );
             return;
           }
           // Optimization: If a sign-in operation is actively in-flight, let that method complete
           if (state.status == AuthStatus.loading) {
-            debugPrint('[Auth] ℹ️ authStateChanges: Auth operation actively in-flight, delegating profile load to caller.');
+            debugPrint(
+              '[Auth] ℹ️ authStateChanges: Auth operation actively in-flight, delegating profile load to caller.',
+            );
             return;
           }
           _loadUserProfile(firebaseUser);
@@ -387,12 +378,16 @@ class AuthNotifier extends Notifier<AuthState> {
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              debugPrint('[Auth] ⚠️ Firestore user document fetch timed out (10s limit). Falling back to local profile.');
+              debugPrint(
+                '[Auth] ⚠️ Firestore user document fetch timed out (10s limit). Falling back to local profile.',
+              );
               throw TimeoutException('Firestore user fetch timed out after 10s');
             },
           );
 
-      debugPrint('[Auth] ✅ Firestore user document fetched in ${profileSw.elapsedMilliseconds}ms (exists: ${doc.exists})');
+      debugPrint(
+        '[Auth] ✅ Firestore user document fetched in ${profileSw.elapsedMilliseconds}ms (exists: ${doc.exists})',
+      );
 
       if (doc.exists && doc.data() != null) {
         var profile = UserProfile.fromFirestore(firebaseUser.uid, doc.data()!);
@@ -458,12 +453,9 @@ class AuthNotifier extends Notifier<AuthState> {
               if (studentSnap.exists) {
                 final studentData = studentSnap.data();
                 if (studentData != null &&
-                    (studentData['displayName'] == null ||
-                        studentData['displayName'].toString().trim().isEmpty)) {
+                    (studentData['displayName'] == null || studentData['displayName'].toString().trim().isEmpty)) {
                   // Merge without touching bloodGroupVerified
-                  await studentRef.set({
-                    'displayName': resolvedName,
-                  }, SetOptions(merge: true));
+                  await studentRef.set({'displayName': resolvedName}, SetOptions(merge: true));
                   debugPrint('[Auth] ✅ Backfilled displayName into students/${firebaseUser.uid}');
                 }
               }
@@ -550,7 +542,9 @@ class AuthNotifier extends Notifier<AuthState> {
         state = AuthState(status: AuthStatus.authenticated, userProfile: fallbackProfile);
       }
     } catch (e) {
-      debugPrint('[Auth] ⚠️ Notice while loading user profile (${profileSw.elapsedMilliseconds}ms): $e. Applying fallback profile.');
+      debugPrint(
+        '[Auth] ⚠️ Notice while loading user profile (${profileSw.elapsedMilliseconds}ms): $e. Applying fallback profile.',
+      );
       final email = firebaseUser.email ?? '';
       final isSuperAdmin = AuthConfig.isSuperAdminEmail(email);
       final defaultRole = isSuperAdmin ? 'superadmin' : _resolveRoleFromEmail(email);
@@ -585,27 +579,19 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   // Student Login (accepts Student Roll or Email)
-  Future<void> signInStudent({
-    required String studentIdentifier,
-    required String password,
-  }) async {
+  Future<void> signInStudent({required String studentIdentifier, required String password}) async {
     final sw = Stopwatch()..start();
     debugPrint('[Auth] ⏱ [signInStudent] Starting login for: $studentIdentifier');
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
 
     try {
       final cleanIdentifier = studentIdentifier.trim();
-      final email = cleanIdentifier.contains('@')
-          ? cleanIdentifier
-          : '$cleanIdentifier@baust.edu.bd';
+      final email = cleanIdentifier.contains('@') ? cleanIdentifier : '$cleanIdentifier@baust.edu.bd';
 
       final authSw = Stopwatch()..start();
       debugPrint('[Auth] 🔑 [signInStudent] Calling signInWithEmailAndPassword for: $email...');
       final userCredential = await auth
-          .signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          )
+          .signInWithEmailAndPassword(email: email, password: password)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -638,10 +624,7 @@ class AuthNotifier extends Notifier<AuthState> {
           try {
             await auth.signOut();
           } catch (_) {}
-          state = const AuthState(
-            status: AuthStatus.error,
-            errorMessage: 'Please sign in with your university email.',
-          );
+          state = const AuthState(status: AuthStatus.error, errorMessage: 'Please sign in with your university email.');
           return;
         }
 
@@ -651,17 +634,13 @@ class AuthNotifier extends Notifier<AuthState> {
       }
       debugPrint('[Auth] 🎉 [signInStudent] Total student login completed in ${sw.elapsedMilliseconds}ms');
     } on FirebaseAuthException catch (e) {
-      debugPrint('[Auth] ❌ [signInStudent] FirebaseAuthException in ${sw.elapsedMilliseconds}ms: ${e.code} - ${e.message}');
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: _formatAuthError(e),
+      debugPrint(
+        '[Auth] ❌ [signInStudent] FirebaseAuthException in ${sw.elapsedMilliseconds}ms: ${e.code} - ${e.message}',
       );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: _formatAuthError(e));
     } catch (e) {
       debugPrint('[Auth] ❌ [signInStudent] Error in ${sw.elapsedMilliseconds}ms: $e');
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: 'Login failed: $e',
-      );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Login failed: $e');
     }
   }
 
@@ -702,59 +681,65 @@ class AuthNotifier extends Notifier<AuthState> {
 
         if (!userDoc.exists) {
           if (isSuperAdmin) {
-            await userDocRef.set({
-              'uid': firebaseUser.uid,
-              'email': email,
-              'displayName': firebaseUser.displayName ?? 'Super Admin',
-              'role': 'superadmin',
-              'emailType': 'superadmin',
-              'isSuperAdmin': true,
-              'accessLevel': 'SuperAdmin',
-              'designation': 'Super Administrator',
-              'verificationStatus': 'verified',
-              'approved': true,
-              'bloodGroupVerified': false,
-              'profileCompleted': true,
-              'onboardingStatus': 'COMPLETED',
-              'createdAt': FieldValue.serverTimestamp(),
-            }).timeout(const Duration(seconds: 10));
+            await userDocRef
+                .set({
+                  'uid': firebaseUser.uid,
+                  'email': email,
+                  'displayName': firebaseUser.displayName ?? 'Super Admin',
+                  'role': 'superadmin',
+                  'emailType': 'superadmin',
+                  'isSuperAdmin': true,
+                  'accessLevel': 'SuperAdmin',
+                  'designation': 'Super Administrator',
+                  'verificationStatus': 'verified',
+                  'approved': true,
+                  'bloodGroupVerified': false,
+                  'profileCompleted': true,
+                  'onboardingStatus': 'COMPLETED',
+                  'createdAt': FieldValue.serverTimestamp(),
+                })
+                .timeout(const Duration(seconds: 10));
           } else {
             // New Google account creation: MUST start with role "student"
             final emailType = AuthConfig.computeEmailType(email);
             final verificationStatus = AuthConfig.computeVerificationStatus(email);
 
-            await userDocRef.set({
-              'uid': firebaseUser.uid,
-              'email': email,
-              'displayName': firebaseUser.displayName ?? 'Student',
-              'role': 'student', // ALWAYS student
-              'emailType': emailType,
-              'verificationStatus': verificationStatus,
-              'approved': false,
-              'bloodGroupVerified': false,
-              'profileCompleted': false,
-              'onboardingStatus': 'PROFILE_PENDING',
-              'idVerificationStatus': 'not_submitted',
-              'createdAt': FieldValue.serverTimestamp(),
-            }).timeout(const Duration(seconds: 10));
+            await userDocRef
+                .set({
+                  'uid': firebaseUser.uid,
+                  'email': email,
+                  'displayName': firebaseUser.displayName ?? 'Student',
+                  'role': 'student', // ALWAYS student
+                  'emailType': emailType,
+                  'verificationStatus': verificationStatus,
+                  'approved': false,
+                  'bloodGroupVerified': false,
+                  'profileCompleted': false,
+                  'onboardingStatus': 'PROFILE_PENDING',
+                  'idVerificationStatus': 'not_submitted',
+                  'createdAt': FieldValue.serverTimestamp(),
+                })
+                .timeout(const Duration(seconds: 10));
           }
         } else if (isSuperAdmin) {
           // If userDoc exists, make sure the doc has role: 'superadmin' and isSuperAdmin: true
           final data = userDoc.data() ?? {};
           if (data['role'] != 'superadmin' || data['isSuperAdmin'] != true) {
-            await userDocRef.set({
-              'role': 'superadmin',
-              'emailType': 'superadmin',
-              'isSuperAdmin': true,
-              'accessLevel': 'SuperAdmin',
-              'designation': data['designation'] ?? 'Super Administrator',
-              'verificationStatus': 'verified',
-              'approved': true,
-              'profileCompleted': true,
-              'onboardingStatus': 'COMPLETED',
-            }, SetOptions(merge: true)).catchError((e) {
-              debugPrint('[Auth] Notice updating superadmin flags: $e');
-            });
+            await userDocRef
+                .set({
+                  'role': 'superadmin',
+                  'emailType': 'superadmin',
+                  'isSuperAdmin': true,
+                  'accessLevel': 'SuperAdmin',
+                  'designation': data['designation'] ?? 'Super Administrator',
+                  'verificationStatus': 'verified',
+                  'approved': true,
+                  'profileCompleted': true,
+                  'onboardingStatus': 'COMPLETED',
+                }, SetOptions(merge: true))
+                .catchError((e) {
+                  debugPrint('[Auth] Notice updating superadmin flags: $e');
+                });
           }
         }
 
@@ -775,18 +760,12 @@ class AuthNotifier extends Notifier<AuthState> {
       }
       state = state.copyWith(status: AuthStatus.error, errorMessage: message);
     } catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: 'Google Sign-In failed: $e',
-      );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Google Sign-In failed: $e');
     }
   }
 
   // Staff/Admin Login (Official Institutional Email)
-  Future<void> signInStaffOrAdmin({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signInStaffOrAdmin({required String email, required String password}) async {
     final sw = Stopwatch()..start();
     debugPrint('[Auth] ⏱ [signInStaffOrAdmin] Starting login for: $email');
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
@@ -796,10 +775,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final authSw = Stopwatch()..start();
       debugPrint('[Auth] 🔑 [signInStaffOrAdmin] Calling signInWithEmailAndPassword for: $cleanEmail...');
       final userCredential = await auth
-          .signInWithEmailAndPassword(
-            email: cleanEmail,
-            password: password,
-          )
+          .signInWithEmailAndPassword(email: cleanEmail, password: password)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -807,7 +783,9 @@ class AuthNotifier extends Notifier<AuthState> {
               throw TimeoutException('Authentication timed out after 10 seconds. Check network connection.');
             },
           );
-      debugPrint('[Auth] ✅ [signInStaffOrAdmin] signInWithEmailAndPassword completed in ${authSw.elapsedMilliseconds}ms');
+      debugPrint(
+        '[Auth] ✅ [signInStaffOrAdmin] signInWithEmailAndPassword completed in ${authSw.elapsedMilliseconds}ms',
+      );
 
       if (userCredential.user != null) {
         await _loadUserProfile(userCredential.user!);
@@ -816,17 +794,13 @@ class AuthNotifier extends Notifier<AuthState> {
       }
       debugPrint('[Auth] 🎉 [signInStaffOrAdmin] Total staff login completed in ${sw.elapsedMilliseconds}ms');
     } on FirebaseAuthException catch (e) {
-      debugPrint('[Auth] ❌ [signInStaffOrAdmin] FirebaseAuthException in ${sw.elapsedMilliseconds}ms: ${e.code} - ${e.message}');
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: _formatAuthError(e),
+      debugPrint(
+        '[Auth] ❌ [signInStaffOrAdmin] FirebaseAuthException in ${sw.elapsedMilliseconds}ms: ${e.code} - ${e.message}',
       );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: _formatAuthError(e));
     } catch (e) {
       debugPrint('[Auth] ❌ [signInStaffOrAdmin] Error in ${sw.elapsedMilliseconds}ms: $e');
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: 'Staff authentication failed: $e',
-      );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Staff authentication failed: $e');
     }
   }
 
@@ -844,17 +818,11 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final cleanEmail = email.trim();
       if (!AuthConfig.isEmailAllowed(cleanEmail)) {
-        state = state.copyWith(
-          status: AuthStatus.error,
-          errorMessage: 'Please sign in with your university email.',
-        );
+        state = state.copyWith(status: AuthStatus.error, errorMessage: 'Please sign in with your university email.');
         return;
       }
 
-      final userCredential = await auth.createUserWithEmailAndPassword(
-        email: cleanEmail,
-        password: password,
-      );
+      final userCredential = await auth.createUserWithEmailAndPassword(email: cleanEmail, password: password);
 
       final firebaseUser = userCredential.user;
       if (firebaseUser != null) {
@@ -872,22 +840,26 @@ class AuthNotifier extends Notifier<AuthState> {
 
         // New student account: MUST start with role "student", bloodGroupVerified: false
         try {
-          await firestore.collection(FirestoreCollections.users).doc(firebaseUser.uid).set({
-            'uid': firebaseUser.uid,
-            'email': cleanEmail,
-            'displayName': fullName,
-            'role': 'student', // ALWAYS student
-            'emailType': emailType,
-            'verificationStatus': verificationStatus,
-            'bloodGroupVerified': false,
-            'profileCompleted': false,
-            'onboardingStatus': 'PROFILE_PENDING',
-            'idVerificationStatus': 'not_submitted',
-            'department': ?department,
-            'studentRoll': ?studentRoll,
-            'residentialHall': ?residentialHall,
-            'createdAt': FieldValue.serverTimestamp(),
-          }).timeout(const Duration(seconds: 10));
+          await firestore
+              .collection(FirestoreCollections.users)
+              .doc(firebaseUser.uid)
+              .set({
+                'uid': firebaseUser.uid,
+                'email': cleanEmail,
+                'displayName': fullName,
+                'role': 'student', // ALWAYS student
+                'emailType': emailType,
+                'verificationStatus': verificationStatus,
+                'bloodGroupVerified': false,
+                'profileCompleted': false,
+                'onboardingStatus': 'PROFILE_PENDING',
+                'idVerificationStatus': 'not_submitted',
+                'department': ?department,
+                'studentRoll': ?studentRoll,
+                'residentialHall': ?residentialHall,
+                'createdAt': FieldValue.serverTimestamp(),
+              })
+              .timeout(const Duration(seconds: 10));
         } catch (e) {
           debugPrint('[Auth] Deferred document creation until email verification: $e');
         }
@@ -909,15 +881,9 @@ class AuthNotifier extends Notifier<AuthState> {
         state = AuthState(status: AuthStatus.authenticated, userProfile: newProfile);
       }
     } on FirebaseAuthException catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: _formatAuthError(e),
-      );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: _formatAuthError(e));
     } catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: 'Registration failed: $e',
-      );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Registration failed: $e');
     }
   }
 
@@ -945,8 +911,8 @@ class AuthNotifier extends Notifier<AuthState> {
     final isRes = residencyStatus != 'non_residential';
     final cleanHall = isRes
         ? (residentialHall != null && residentialHall.trim().isNotEmpty
-            ? residentialHall.trim()
-            : 'Shaheed Dr. Zikrul Haque Hall (SDZHH)')
+              ? residentialHall.trim()
+              : 'Shaheed Dr. Zikrul Haque Hall (SDZHH)')
         : 'Non-Residential (Day Scholar)';
     final cleanRoom = isRes
         ? (roomNumber != null && roomNumber.trim().isNotEmpty ? roomNumber.trim() : '402-B')
@@ -977,10 +943,7 @@ class AuthNotifier extends Notifier<AuthState> {
           );
         }
       } else {
-        transaction.set(studentIdRef, {
-          'uid': currentProfile.uid,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        transaction.set(studentIdRef, {'uid': currentProfile.uid, 'createdAt': FieldValue.serverTimestamp()});
       }
 
       final resolvedDisplayName = currentProfile.displayName.trim().isNotEmpty
@@ -1078,13 +1041,11 @@ class AuthNotifier extends Notifier<AuthState> {
 
     final cleanHall = isRes
         ? (residentialHall != null && residentialHall.trim().isNotEmpty
-            ? residentialHall.trim()
-            : currentProfile.effectiveResidentialHall)
+              ? residentialHall.trim()
+              : currentProfile.effectiveResidentialHall)
         : 'Non-Residential (Day Scholar)';
     final cleanRoom = isRes
-        ? (roomNumber != null && roomNumber.trim().isNotEmpty
-            ? roomNumber.trim()
-            : currentProfile.effectiveRoomNumber)
+        ? (roomNumber != null && roomNumber.trim().isNotEmpty ? roomNumber.trim() : currentProfile.effectiveRoomNumber)
         : 'N/A';
     final cleanPhone = phone?.trim();
     final cleanDistrict = district?.trim();
@@ -1210,11 +1171,7 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   /// Admin approves or rejects a student's ID card.
-  Future<void> reviewStudentIdVerification({
-    required String studentUid,
-    required bool approve,
-    String? note,
-  }) async {
+  Future<void> reviewStudentIdVerification({required String studentUid, required bool approve, String? note}) async {
     final reviewer = state.userProfile;
     final status = approve ? 'verified' : 'rejected';
     final cleanNote = (note ?? '').trim();
@@ -1267,9 +1224,7 @@ class AuthNotifier extends Notifier<AuthState> {
   // Send Password Reset Link to BAUST Institutional Email
   Future<bool> sendPasswordReset(String email) async {
     try {
-      final cleanEmail = email.trim().contains('@')
-          ? email.trim()
-          : '${email.trim()}@baust.edu.bd';
+      final cleanEmail = email.trim().contains('@') ? email.trim() : '${email.trim()}@baust.edu.bd';
       await auth.sendPasswordResetEmail(email: cleanEmail);
       return true;
     } catch (e) {
@@ -1289,34 +1244,26 @@ class AuthNotifier extends Notifier<AuthState> {
       bloodGroupSource: medicalData?.bloodGroupSource,
       bloodGroupVerified: false,
       isEligibleForBloodDonation: medicalData?.isEligibleForBloodDonation,
-      bloodDonationIneligibilityReason:
-          medicalData?.bloodDonationIneligibilityReason,
+      bloodDonationIneligibilityReason: medicalData?.bloodDonationIneligibilityReason,
     );
     state = state.copyWith(userProfile: updatedProfile);
 
     try {
       await Future.wait([
         // 1. Update Firestore Users collection
-        firestore
-            .collection(FirestoreCollections.users)
-            .doc(currentProfile.uid)
-            .set({
+        firestore.collection(FirestoreCollections.users).doc(currentProfile.uid).set({
           'onboardingStatus': 'COMPLETED',
           if (medicalData != null) ...{
             'bloodGroup': medicalData.bloodGroup,
             'bloodGroupSource': medicalData.bloodGroupSource,
             'isEligibleForBloodDonation': medicalData.isEligibleForBloodDonation,
-            'bloodDonationIneligibilityReason':
-                medicalData.bloodDonationIneligibilityReason,
-          }
+            'bloodDonationIneligibilityReason': medicalData.bloodDonationIneligibilityReason,
+          },
         }, SetOptions(merge: true)),
 
         // 2 & 3. Persist AI medical history & student critical flags in parallel
         if (medicalData != null) ...[
-          firestore
-              .collection('medical_histories')
-              .doc(currentProfile.uid)
-              .set({
+          firestore.collection('medical_histories').doc(currentProfile.uid).set({
             'studentId': currentProfile.uid,
             'historicalProblems': medicalData.historicalProblems,
             'activeIssues': medicalData.activeIssues,
@@ -1329,31 +1276,22 @@ class AuthNotifier extends Notifier<AuthState> {
             'procedures': medicalData.procedures.map((e) => e.toMap()).toList(),
             'prescriptions': medicalData.currentMedications.map((e) => e.toMap()).toList(),
             'isEligibleForBloodDonation': medicalData.isEligibleForBloodDonation,
-            'bloodDonationIneligibilityReason':
-                medicalData.bloodDonationIneligibilityReason,
+            'bloodDonationIneligibilityReason': medicalData.bloodDonationIneligibilityReason,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true)),
-          firestore
-              .collection(FirestoreCollections.students)
-              .doc(currentProfile.uid)
-              .set({
+          firestore.collection(FirestoreCollections.students).doc(currentProfile.uid).set({
             'onboardingStatus': 'COMPLETED',
-            if (currentProfile.displayName.trim().isNotEmpty)
-              'displayName': currentProfile.displayName.trim(),
+            if (currentProfile.displayName.trim().isNotEmpty) 'displayName': currentProfile.displayName.trim(),
             'bloodGroup': medicalData.bloodGroup,
             'bloodGroupSource': medicalData.bloodGroupSource,
             'bloodGroupVerified': false,
             'criticalFlags': medicalData.knownAllergies,
             'isEligibleForBloodDonation': medicalData.isEligibleForBloodDonation,
-            'bloodDonationIneligibilityReason':
-                medicalData.bloodDonationIneligibilityReason,
+            'bloodDonationIneligibilityReason': medicalData.bloodDonationIneligibilityReason,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true)),
           if (currentProfile.isWillingToDonateBlood)
-            firestore
-                .collection('blood_donors')
-                .doc(currentProfile.uid)
-                .set({
+            firestore.collection('blood_donors').doc(currentProfile.uid).set({
               'bloodGroup': medicalData.bloodGroup ?? 'Pending Verification',
               'bloodGroupVerified': false,
               'updatedAt': FieldValue.serverTimestamp(),

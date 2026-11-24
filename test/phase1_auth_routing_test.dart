@@ -54,10 +54,10 @@ void main() {
     test('5. Student ID format regex validation (6-20 digits)', () {
       // Valid IDs
       expect(AuthConfig.isValidStudentId('210401050'), isTrue); // Standard 9-digit BAUST roll
-      expect(AuthConfig.isValidStudentId('19010101'), isTrue);  // 8 digits
-      expect(AuthConfig.isValidStudentId('1234567'), isTrue);   // 7 digits
-      expect(AuthConfig.isValidStudentId('123456'), isTrue);    // 6 digits (minimum)
-      expect(AuthConfig.isValidStudentId('1234567890'), isTrue);// 10 digits
+      expect(AuthConfig.isValidStudentId('19010101'), isTrue); // 8 digits
+      expect(AuthConfig.isValidStudentId('1234567'), isTrue); // 7 digits
+      expect(AuthConfig.isValidStudentId('123456'), isTrue); // 6 digits (minimum)
+      expect(AuthConfig.isValidStudentId('1234567890'), isTrue); // 10 digits
       expect(AuthConfig.isValidStudentId('0802420205101137'), isTrue); // 16 digits
       expect(AuthConfig.isValidStudentId('12345678901234567890'), isTrue); // 20 digits (maximum)
       expect(AuthConfig.isValidStudentId('  210401050  '), isTrue); // Whitespace trimmed

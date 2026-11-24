@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -11,11 +12,7 @@ class GeminiApiException implements Exception {
   final String userMessage;
   final String? technicalDetails;
 
-  GeminiApiException({
-    this.statusCode,
-    required this.userMessage,
-    this.technicalDetails,
-  });
+  GeminiApiException({this.statusCode, required this.userMessage, this.technicalDetails});
 
   @override
   String toString() => userMessage;
@@ -26,11 +23,7 @@ class FollowUpItem {
   final String? place;
   final String? purpose;
 
-  const FollowUpItem({
-    this.date,
-    this.place,
-    this.purpose,
-  });
+  const FollowUpItem({this.date, this.place, this.purpose});
 
   factory FollowUpItem.fromMap(Map<String, dynamic> map) {
     return FollowUpItem(
@@ -87,7 +80,8 @@ class MedicationItem {
     final frequency = map['frequency']?.toString();
     final dose = map['dose']?.toString();
 
-    final bool useDischarge = (rawPrescribed == null ||
+    final bool useDischarge =
+        (rawPrescribed == null ||
             rawPrescribed.trim().isEmpty ||
             GeminiAiService.parseDateString(rawPrescribed) == null) &&
         dischargeDateFallback != null &&
@@ -147,44 +141,26 @@ class ProcedureItem {
   final String name;
   final String? date;
 
-  const ProcedureItem({
-    required this.name,
-    this.date,
-  });
+  const ProcedureItem({required this.name, this.date});
 
   factory ProcedureItem.fromMap(Map<String, dynamic> map) {
-    return ProcedureItem(
-      name: map['name']?.toString() ?? '',
-      date: map['date']?.toString(),
-    );
+    return ProcedureItem(name: map['name']?.toString() ?? '', date: map['date']?.toString());
   }
 
-  Map<String, dynamic> toMap() => {
-    'name': name,
-    if (date != null) 'date': date,
-  };
+  Map<String, dynamic> toMap() => {'name': name, if (date != null) 'date': date};
 }
 
 class DiagnosisItem {
   final String name;
   final String? date;
 
-  const DiagnosisItem({
-    required this.name,
-    this.date,
-  });
+  const DiagnosisItem({required this.name, this.date});
 
   factory DiagnosisItem.fromMap(Map<String, dynamic> map) {
-    return DiagnosisItem(
-      name: map['name']?.toString() ?? '',
-      date: map['date']?.toString(),
-    );
+    return DiagnosisItem(name: map['name']?.toString() ?? '', date: map['date']?.toString());
   }
 
-  Map<String, dynamic> toMap() => {
-    'name': name,
-    if (date != null) 'date': date,
-  };
+  Map<String, dynamic> toMap() => {'name': name, if (date != null) 'date': date};
 }
 
 class HospitalAdmissionItem {
@@ -192,11 +168,7 @@ class HospitalAdmissionItem {
   final String? dischargeDate;
   final String? reason;
 
-  const HospitalAdmissionItem({
-    this.admitDate,
-    this.dischargeDate,
-    this.reason,
-  });
+  const HospitalAdmissionItem({this.admitDate, this.dischargeDate, this.reason});
 
   factory HospitalAdmissionItem.fromMap(Map<String, dynamic> map) {
     return HospitalAdmissionItem(
@@ -217,10 +189,7 @@ class AllergyItem {
   final String substance;
   final String? reaction;
 
-  const AllergyItem({
-    required this.substance,
-    this.reaction,
-  });
+  const AllergyItem({required this.substance, this.reaction});
 
   factory AllergyItem.fromDynamic(dynamic item) {
     if (item == null) return const AllergyItem(substance: '');
@@ -229,9 +198,7 @@ class AllergyItem {
       final reaction = item['reaction']?.toString().trim();
       return AllergyItem(
         substance: substance,
-        reaction: (reaction != null && reaction.isNotEmpty && reaction.toLowerCase() != 'null')
-            ? reaction
-            : null,
+        reaction: (reaction != null && reaction.isNotEmpty && reaction.toLowerCase() != 'null') ? reaction : null,
       );
     }
     final text = item.toString().trim();
@@ -239,10 +206,7 @@ class AllergyItem {
       final idx = text.indexOf(' - ');
       final sub = text.substring(0, idx).trim();
       final rx = text.substring(idx + 3).trim();
-      return AllergyItem(
-        substance: sub,
-        reaction: rx.isNotEmpty ? rx : null,
-      );
+      return AllergyItem(substance: sub, reaction: rx.isNotEmpty ? rx : null);
     }
     return AllergyItem(substance: text);
   }
@@ -254,37 +218,26 @@ class AllergyItem {
     return substance;
   }
 
-  Map<String, dynamic> toMap() => {
-    'substance': substance,
-    if (reaction != null) 'reaction': reaction,
-  };
+  Map<String, dynamic> toMap() => {'substance': substance, if (reaction != null) 'reaction': reaction};
 }
 
 class PastVisitItem {
   final String date;
   final String diagnosis;
 
-  const PastVisitItem({
-    required this.date,
-    required this.diagnosis,
-  });
+  const PastVisitItem({required this.date, required this.diagnosis});
 
   factory PastVisitItem.fromMap(Map<String, dynamic> map) {
-    return PastVisitItem(
-      date: map['date']?.toString() ?? '',
-      diagnosis: map['diagnosis']?.toString() ?? '',
-    );
+    return PastVisitItem(date: map['date']?.toString() ?? '', diagnosis: map['diagnosis']?.toString() ?? '');
   }
 
-  Map<String, dynamic> toMap() => {
-    'date': date,
-    'diagnosis': diagnosis,
-  };
+  Map<String, dynamic> toMap() => {'date': date, 'diagnosis': diagnosis};
 }
 
 class ExtractedMedicalData {
   final bool isMedicalDocument;
-  final String documentType; // prescription | lab_report | discharge_summary | clinical_record | other_non_medical | unreadable
+  final String
+  documentType; // prescription | lab_report | discharge_summary | clinical_record | other_non_medical | unreadable
   final String classificationReason;
   final String? bloodGroup;
   final String bloodGroupSource; // lab_report | clinical_record | other_document | not_found
@@ -330,12 +283,13 @@ class ExtractedMedicalData {
     this.followUps = const [],
     this.doctorAdvice,
     required this.rawJson,
-  })  : drugAllergyItems = drugAllergyItems ??
-            (drugAllergies?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? const []),
-        foodAllergyItems = foodAllergyItems ??
-            (foodAllergies?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? const []),
-        environmentalAllergyItems = environmentalAllergyItems ??
-            (environmentalAllergyItems?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? const []);
+  }) : drugAllergyItems =
+           drugAllergyItems ?? (drugAllergies?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? const []),
+       foodAllergyItems =
+           foodAllergyItems ?? (foodAllergies?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? const []),
+       environmentalAllergyItems =
+           environmentalAllergyItems ??
+           (environmentalAllergies?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? const []);
 
   /// Normalizes blood group strings (e.g. "B positive", "O ve", "বি পজিটিভ")
   /// to standard 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'.
@@ -379,9 +333,7 @@ class ExtractedMedicalData {
       return null;
     }
 
-    final bool isNegative = rhRaw.contains('-') ||
-        rhRaw.contains('neg') ||
-        rhRaw.contains('নেগেটিভ');
+    final bool isNegative = rhRaw.contains('-') || rhRaw.contains('neg') || rhRaw.contains('নেগেটিভ');
 
     return '$group${isNegative ? '-' : '+'}';
   }
@@ -391,15 +343,17 @@ class ExtractedMedicalData {
     // Defensive parsing: missing or non-boolean is treated as NOT medical (fail-safe)
     final bool isMedical = (rawIsMedical is bool) ? rawIsMedical : false;
 
-    final String docType = (map['document_type'] as String?)?.toLowerCase().trim() ??
+    final String docType =
+        (map['document_type'] as String?)?.toLowerCase().trim() ??
         (isMedical ? 'clinical_record' : 'other_non_medical');
     final bool isDischargeSummary = docType == 'discharge_summary';
-    final String rawReason = (map['classification_reason'] as String?)?.trim() ??
+    final String rawReason =
+        (map['classification_reason'] as String?)?.trim() ??
         (isMedical
             ? 'Clinical medical record'
             : (rawIsMedical == null
-                ? 'Document verification failed: missing medical classification'
-                : 'Document identified as non-medical or unreadable'));
+                  ? 'Document verification failed: missing medical classification'
+                  : 'Document identified as non-medical or unreadable'));
     final String sanitizedReason = GeminiAiService.sanitizeClassificationReason(rawReason);
 
     // When is_medical_document is false, return every other clinical field empty/null. Do not extract anything.
@@ -458,21 +412,21 @@ class ExtractedMedicalData {
     final rawConditions = (map['chronic_conditions'] as List<dynamic>?) ?? [];
     final normalizedConditions = GeminiAiService.normalizeAndDeduplicateConditions(rawConditions);
 
-    final procedures = (map['procedures'] as List<dynamic>?)
-            ?.map((e) => ProcedureItem.fromMap(
-                Map<String, dynamic>.from(e is Map ? e : {'name': e.toString()})))
+    final procedures =
+        (map['procedures'] as List<dynamic>?)
+            ?.map((e) => ProcedureItem.fromMap(Map<String, dynamic>.from(e is Map ? e : {'name': e.toString()})))
             .toList() ??
         [];
 
-    final diagnoses = (map['diagnoses'] as List<dynamic>?)
-            ?.map((e) => DiagnosisItem.fromMap(
-                Map<String, dynamic>.from(e is Map ? e : {'name': e.toString()})))
+    final diagnoses =
+        (map['diagnoses'] as List<dynamic>?)
+            ?.map((e) => DiagnosisItem.fromMap(Map<String, dynamic>.from(e is Map ? e : {'name': e.toString()})))
             .toList() ??
         [];
 
-    final hospitalAdmissions = (map['hospital_admissions'] as List<dynamic>?)
-            ?.map((e) => HospitalAdmissionItem.fromMap(
-                Map<String, dynamic>.from(e is Map ? e : {})))
+    final hospitalAdmissions =
+        (map['hospital_admissions'] as List<dynamic>?)
+            ?.map((e) => HospitalAdmissionItem.fromMap(Map<String, dynamic>.from(e is Map ? e : {})))
             .toList() ??
         [];
 
@@ -487,19 +441,22 @@ class ExtractedMedicalData {
       }
     }
 
-    final currentMeds = (map['current_medications'] as List<dynamic>?)
-            ?.map((e) => MedicationItem.fromMap(
-                  Map<String, dynamic>.from(e is Map ? e : {}),
-                  referenceDate: referenceDate,
-                  dischargeDateFallback: dischargeDateFallback,
-                  isDischargeSummary: isDischargeSummary,
-                ))
+    final currentMeds =
+        (map['current_medications'] as List<dynamic>?)
+            ?.map(
+              (e) => MedicationItem.fromMap(
+                Map<String, dynamic>.from(e is Map ? e : {}),
+                referenceDate: referenceDate,
+                dischargeDateFallback: dischargeDateFallback,
+                isDischargeSummary: isDischargeSummary,
+              ),
+            )
             .toList() ??
         [];
 
-    final followUps = (map['follow_ups'] as List<dynamic>?)
-            ?.map((e) => FollowUpItem.fromMap(
-                Map<String, dynamic>.from(e is Map ? e : {})))
+    final followUps =
+        (map['follow_ups'] as List<dynamic>?)
+            ?.map((e) => FollowUpItem.fromMap(Map<String, dynamic>.from(e is Map ? e : {})))
             .toList() ??
         [];
 
@@ -511,27 +468,18 @@ class ExtractedMedicalData {
       bloodGroupSource: bgSource,
       bloodGroupEvidence: bloodEvidence,
       bloodGroupVerified: false,
-      drugAllergyItems: (map['drug_allergies'] as List<dynamic>?)
-              ?.map((e) => AllergyItem.fromDynamic(e))
-              .toList() ??
-          [],
-      foodAllergyItems: (map['food_allergies'] as List<dynamic>?)
-              ?.map((e) => AllergyItem.fromDynamic(e))
-              .toList() ??
-          [],
-      environmentalAllergyItems: (map['environmental_allergies'] as List<dynamic>?)
-              ?.map((e) => AllergyItem.fromDynamic(e))
-              .toList() ??
-          [],
+      drugAllergyItems:
+          (map['drug_allergies'] as List<dynamic>?)?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? [],
+      foodAllergyItems:
+          (map['food_allergies'] as List<dynamic>?)?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? [],
+      environmentalAllergyItems:
+          (map['environmental_allergies'] as List<dynamic>?)?.map((e) => AllergyItem.fromDynamic(e)).toList() ?? [],
       chronicConditions: normalizedConditions,
       currentMedications: currentMeds,
-      abnormalLabs: (map['abnormal_labs'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      pastVisits: (map['past_visits'] as List<dynamic>?)
-              ?.map((e) => PastVisitItem.fromMap(
-                  Map<String, dynamic>.from(e is Map ? e : {})))
+      abnormalLabs: (map['abnormal_labs'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      pastVisits:
+          (map['past_visits'] as List<dynamic>?)
+              ?.map((e) => PastVisitItem.fromMap(Map<String, dynamic>.from(e is Map ? e : {})))
               .toList() ??
           [],
       procedures: procedures,
@@ -562,51 +510,50 @@ class ExtractedMedicalData {
       followUps.isEmpty;
 
   Map<String, dynamic> toMap() => {
-        ...rawJson,
-        'is_medical_document': isMedicalDocument,
-        'document_type': documentType,
-        'classification_reason': classificationReason,
-        'blood_group': bloodGroup,
-        'blood_group_source': bloodGroupSource,
-        'blood_group_evidence': bloodGroupEvidence,
-        'blood_group_verified': false,
-        'drug_allergies': drugAllergyItems.map((e) => e.toMap()).toList(),
-        'food_allergies': foodAllergyItems.map((e) => e.toMap()).toList(),
-        'environmental_allergies': environmentalAllergyItems.map((e) => e.toMap()).toList(),
-        'chronic_conditions': chronicConditions,
-        'procedures': procedures.map((e) => e.toMap()).toList(),
-        'diagnoses': diagnoses.map((e) => e.toMap()).toList(),
-        'hospital_admissions': hospitalAdmissions.map((e) => e.toMap()).toList(),
-        'follow_ups': followUps.map((e) => e.toMap()).toList(),
-        if (patientName != null) 'patient_name': patientName,
-      };
+    ...rawJson,
+    'is_medical_document': isMedicalDocument,
+    'document_type': documentType,
+    'classification_reason': classificationReason,
+    'blood_group': bloodGroup,
+    'blood_group_source': bloodGroupSource,
+    'blood_group_evidence': bloodGroupEvidence,
+    'blood_group_verified': false,
+    'drug_allergies': drugAllergyItems.map((e) => e.toMap()).toList(),
+    'food_allergies': foodAllergyItems.map((e) => e.toMap()).toList(),
+    'environmental_allergies': environmentalAllergyItems.map((e) => e.toMap()).toList(),
+    'chronic_conditions': chronicConditions,
+    'procedures': procedures.map((e) => e.toMap()).toList(),
+    'diagnoses': diagnoses.map((e) => e.toMap()).toList(),
+    'hospital_admissions': hospitalAdmissions.map((e) => e.toMap()).toList(),
+    'follow_ups': followUps.map((e) => e.toMap()).toList(),
+    if (patientName != null) 'patient_name': patientName,
+  };
 
   // Backward compatibility getters for auth_controller, tests & UI
-  List<String> get drugAllergies =>
-      drugAllergyItems.map((a) => a.displayText).toList();
+  List<String> get drugAllergies => drugAllergyItems.map((a) => a.displayText).toList();
 
-  List<String> get foodAllergies =>
-      foodAllergyItems.map((a) => a.displayText).toList();
+  List<String> get foodAllergies => foodAllergyItems.map((a) => a.displayText).toList();
 
-  List<String> get environmentalAllergies =>
-      environmentalAllergyItems.map((a) => a.displayText).toList();
+  List<String> get environmentalAllergies => environmentalAllergyItems.map((a) => a.displayText).toList();
 
   List<String> get knownAllergies => [
-        ...drugAllergyItems.map((a) => 'Drug: ${a.displayText}'),
-        ...foodAllergyItems.map((a) => 'Food: ${a.displayText}'),
-        ...environmentalAllergyItems.map((a) => 'Environmental: ${a.displayText}'),
-      ];
+    ...drugAllergyItems.map((a) => 'Drug: ${a.displayText}'),
+    ...foodAllergyItems.map((a) => 'Food: ${a.displayText}'),
+    ...environmentalAllergyItems.map((a) => 'Environmental: ${a.displayText}'),
+  ];
 
   List<String> get historicalProblems => [
-        ...chronicConditions,
-        ...procedures.map((p) => p.date != null ? '${p.name} (${p.date})' : p.name),
-        ...hospitalAdmissions.map((a) =>
-            'Admission: ${a.reason ?? "Hospital stay"}${a.admitDate != null ? " on ${a.admitDate}" : ""}'),
-      ];
+    ...chronicConditions,
+    ...procedures.map((p) => p.date != null ? '${p.name} (${p.date})' : p.name),
+    ...hospitalAdmissions.map(
+      (a) => 'Admission: ${a.reason ?? "Hospital stay"}${a.admitDate != null ? " on ${a.admitDate}" : ""}',
+    ),
+  ];
 
   List<String> get activeIssues => currentMedications
-      .map((m) =>
-          '${m.name}${m.dose.isNotEmpty ? " ${m.dose}" : ""}${m.frequency.isNotEmpty ? " (${m.frequency})" : ""}')
+      .map(
+        (m) => '${m.name}${m.dose.isNotEmpty ? " ${m.dose}" : ""}${m.frequency.isNotEmpty ? " (${m.frequency})" : ""}',
+      )
       .toList();
 
   double get confidenceScore => 1.0;
@@ -618,8 +565,7 @@ class ExtractedMedicalData {
 
   // Strict clinical rule: AI never decides blood donation eligibility
   bool? get isEligibleForBloodDonation => null;
-  String get bloodDonationIneligibilityReason =>
-      'Pending Clinical Screening (Requires Manual Staff Review)';
+  String get bloodDonationIneligibilityReason => 'Pending Clinical Screening (Requires Manual Staff Review)';
 }
 
 /// Gemini API Keys for multimodal medical document parsing with fallback rotation
@@ -627,9 +573,7 @@ List<String> get geminiApiKeys => GeminiAiService.geminiApiKeys;
 
 /// Backwards compatibility getter
 String get geminiApiKey =>
-    GeminiAiService.geminiApiKeys.isNotEmpty
-        ? GeminiAiService.geminiApiKeys[GeminiAiService.currentKeyIndex]
-        : '';
+    GeminiAiService.geminiApiKeys.isNotEmpty ? GeminiAiService.geminiApiKeys[GeminiAiService.currentKeyIndex] : '';
 
 class GeminiAiService {
   final http.Client? httpClient;
@@ -670,7 +614,9 @@ class GeminiAiService {
       return envKeys;
     }
 
-    debugPrint('[GeminiAiService] No custom or environment keys found; falling back to ${_defaultFallbackKeys.length} bootstrap fallback keys.');
+    debugPrint(
+      '[GeminiAiService] No custom or environment keys found; falling back to ${_defaultFallbackKeys.length} bootstrap fallback keys.',
+    );
     for (int i = 0; i < _defaultFallbackKeys.length; i++) {
       debugPrint('[GeminiAiService] Bootstrap fallback key #${i + 1} registered.');
     }
@@ -723,7 +669,9 @@ class GeminiAiService {
       keys.add(dartDefineKey.trim());
     }
 
-    debugPrint('[GeminiAiService] _resolveKeysFromEnvironment: Resolved ${keys.length} key(s) from .env / compile environment.');
+    debugPrint(
+      '[GeminiAiService] _resolveKeysFromEnvironment: Resolved ${keys.length} key(s) from .env / compile environment.',
+    );
     for (int i = 0; i < keys.length; i++) {
       debugPrint('[GeminiAiService] Loaded key #${i + 1} registered.');
     }
@@ -748,10 +696,10 @@ class GeminiAiService {
 
   /// Ordered model fallback chain (easy to edit in one place)
   static const List<String> modelChain = [
-    'gemini-3.5-flash',          // primary
-    'gemini-3.1-flash-lite',     // fallback 1
-    'gemini-flash-lite-latest',  // fallback 2
-    'gemini-flash-latest',       // fallback 3
+    'gemini-3.5-flash', // primary
+    'gemini-3.1-flash-lite', // fallback 1
+    'gemini-flash-lite-latest', // fallback 2
+    'gemini-flash-latest', // fallback 3
   ];
 
   /// Backward-compatibility getter for primary model
@@ -794,8 +742,7 @@ class GeminiAiService {
   static bool isModelUnavailable(String model) => _unavailableModels.contains(model);
 
   /// Backwards compatibility getter for single key
-  static String get geminiApiKey =>
-      geminiApiKeys.isNotEmpty ? geminiApiKeys[_currentKeyIndex] : '';
+  static String get geminiApiKey => geminiApiKeys.isNotEmpty ? geminiApiKeys[_currentKeyIndex] : '';
 
   /// Injectable clock function for deterministic date/time tests
   static DateTime Function() clock = () => DateTime.now();
@@ -838,16 +785,10 @@ class GeminiAiService {
     String clean = reason.trim();
 
     // Redact email addresses
-    clean = clean.replaceAll(
-      RegExp(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'),
-      '[redacted email]',
-    );
+    clean = clean.replaceAll(RegExp(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'), '[redacted email]');
 
     // Redact phone numbers
-    clean = clean.replaceAll(
-      RegExp(r'(\+?\d{1,4}[\s-]?)?\(?\d{2,4}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}'),
-      '[redacted phone]',
-    );
+    clean = clean.replaceAll(RegExp(r'(\+?\d{1,4}[\s-]?)?\(?\d{2,4}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}'), '[redacted phone]');
 
     // Redact names following common prefixes: "belonging to <Name>", "named <Name>", "candidate <Name>"
     clean = clean.replaceAll(
@@ -858,10 +799,7 @@ class GeminiAiService {
       r'$1 [redacted name]',
     );
     clean = clean.replaceAll(
-      RegExp(
-        r'\b(of|for)\s+([A-Z][a-z]+(\s+[A-Z][a-z]+)+)',
-        caseSensitive: false,
-      ),
+      RegExp(r'\b(of|for)\s+([A-Z][a-z]+(\s+[A-Z][a-z]+)+)', caseSensitive: false),
       r'$1 [redacted name]',
     );
 
@@ -902,18 +840,29 @@ class GeminiAiService {
     }
 
     const months = {
-      'jan': 1, 'january': 1,
-      'feb': 2, 'february': 2,
-      'mar': 3, 'march': 3,
-      'apr': 4, 'april': 4,
+      'jan': 1,
+      'january': 1,
+      'feb': 2,
+      'february': 2,
+      'mar': 3,
+      'march': 3,
+      'apr': 4,
+      'april': 4,
       'may': 5,
-      'jun': 6, 'june': 6,
-      'jul': 7, 'july': 7,
-      'aug': 8, 'august': 8,
-      'sep': 9, 'september': 9,
-      'oct': 10, 'october': 10,
-      'nov': 11, 'november': 11,
-      'dec': 12, 'december': 12,
+      'jun': 6,
+      'june': 6,
+      'jul': 7,
+      'july': 7,
+      'aug': 8,
+      'august': 8,
+      'sep': 9,
+      'september': 9,
+      'oct': 10,
+      'october': 10,
+      'nov': 11,
+      'november': 11,
+      'dec': 12,
+      'december': 12,
     };
 
     // Textual day-first: "05 Oct 2026", "5 October 2026", "16 Aug 2026"
@@ -998,9 +947,8 @@ class GeminiAiService {
     }
 
     final cleanDuration = convertBanglaDigits(durationText.trim().toLowerCase());
-    final match = RegExp(
-      r'(\d+)\s*(days?|weeks?|months?|years?|দিন|সপ্তাহ|মাস|বছর|d|w|m|y)?',
-    ).firstMatch(cleanDuration);
+    final match = RegExp(r'(\d+)\s*(days?|weeks?|months?|years?|দিন|সপ্তাহ|মাস|বছর|d|w|m|y)?')
+        .firstMatch(cleanDuration);
 
     if (match == null) {
       return 'Duration not stated';
@@ -1059,7 +1007,17 @@ class GeminiAiService {
     final Map<String, _ConditionEntry> merged = {};
 
     const asthmaKeys = {'asthma', 'হাঁপানি', 'asthma (হাঁপানি)', 'হাঁপানি (asthma)', 'bronchial asthma'};
-    const diabetesKeys = {'diabetes', 'diabetic', 'ডায়াবেটিস', 'diabetes (ডায়াবেটিস)', 'diabetes mellitus', 't2dm', 't1dm', 'type 2 diabetes', 'type 1 diabetes'};
+    const diabetesKeys = {
+      'diabetes',
+      'diabetic',
+      'ডায়াবেটিস',
+      'diabetes (ডায়াবেটিস)',
+      'diabetes mellitus',
+      't2dm',
+      't1dm',
+      'type 2 diabetes',
+      'type 1 diabetes',
+    };
     const allergyKeys = {'allergy', 'allergies', 'এলার্জি', 'allergy (এলার্জি)'};
     const htnKeys = {'hypertension', 'htn', 'উচ্চ রক্তচাপ', 'hypertension (উচ্চ রক্তচাপ)'};
 
@@ -1118,10 +1076,7 @@ class GeminiAiService {
         groupTitle = cleanText;
       }
 
-      final entry = merged.putIfAbsent(
-        groupKey,
-        () => _ConditionEntry(groupKey: groupKey, title: groupTitle),
-      );
+      final entry = merged.putIfAbsent(groupKey, () => _ConditionEntry(groupKey: groupKey, title: groupTitle));
 
       // Process details: convert Bangla digits, format years and severity
       for (final rawDetail in extractedDetails) {
@@ -1129,8 +1084,7 @@ class GeminiAiService {
         final isYear = RegExp(r'^\d{4}$').hasMatch(normalizedDetail);
         if (isYear) {
           entry.addDetail('since $normalizedDetail', isOnset: true);
-        } else if (normalizedDetail.toLowerCase().startsWith('since ') ||
-            normalizedDetail.contains('থেকে')) {
+        } else if (normalizedDetail.toLowerCase().startsWith('since ') || normalizedDetail.contains('থেকে')) {
           final yearMatch = RegExp(r'\d{4}').firstMatch(normalizedDetail);
           if (yearMatch != null) {
             entry.addDetail('since ${yearMatch.group(0)}', isOnset: true);
@@ -1150,7 +1104,8 @@ class GeminiAiService {
   static String mapHttpError(int statusCode, String responseBody) {
     if (statusCode == 429) {
       // Check for retryDelay in body (e.g., {"error": {"details": [{"retryDelay": "54000s"}]}} or "Please retry after 54000s")
-      final delayMatch = RegExp(r'retryDelay["\s:]+([0-9]+)s?', caseSensitive: false).firstMatch(responseBody) ??
+      final delayMatch =
+          RegExp(r'retryDelay["\s:]+([0-9]+)s?', caseSensitive: false).firstMatch(responseBody) ??
           RegExp(r'retry after\s+([0-9]+)\s*s?', caseSensitive: false).firstMatch(responseBody) ??
           RegExp(r'([0-9]+)s\b').firstMatch(responseBody);
 
@@ -1396,9 +1351,7 @@ Required JSON Schema:
   }) async {
     final activePrompt = prompt ?? systemPrompt;
     if (fileBytes == null || fileBytes.isEmpty) {
-      throw GeminiApiException(
-        userMessage: 'Selected file "$fileName" has empty or unreadable byte content.',
-      );
+      throw GeminiApiException(userMessage: 'Selected file "$fileName" has empty or unreadable byte content.');
     }
 
     // Check client-side rate limit before proceeding
@@ -1478,27 +1431,18 @@ Required JSON Schema:
           'parts': [
             {'text': prompt},
             {
-              'inlineData': {
-                'mimeType': mimeType,
-                'data': base64Data,
-              }
-            }
-          ]
-        }
+              'inlineData': {'mimeType': mimeType, 'data': base64Data},
+            },
+          ],
+        },
       ],
-      'generationConfig': {
-        'responseMimeType': 'application/json',
-        'temperature': 0,
-      }
+      'generationConfig': {'responseMimeType': 'application/json', 'temperature': 0},
     };
 
     final List<String> activeKeys = GeminiAiService.geminiApiKeys;
     final int totalKeys = activeKeys.length;
     if (totalKeys == 0) {
-      throw GeminiApiException(
-        statusCode: 503,
-        userMessage: allFailFriendlyMessage,
-      );
+      throw GeminiApiException(statusCode: 503, userMessage: allFailFriendlyMessage);
     }
 
     final client = httpClient ?? http.Client();
@@ -1538,7 +1482,9 @@ Required JSON Schema:
           final cooldownExpiry = _keyModelCooldowns[cooldownKey];
           if (cooldownExpiry != null && clock().isBefore(cooldownExpiry)) {
             if (kDebugMode) {
-              debugPrint('GeminiAiService: Key at index $keyIndex on model "$model" is currently on cooldown. Skipping.');
+              debugPrint(
+                'GeminiAiService: Key at index $keyIndex on model "$model" is currently on cooldown. Skipping.',
+              );
             }
             continue;
           }
@@ -1564,17 +1510,16 @@ Required JSON Schema:
               response = await client
                   .post(
                     url,
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'x-goog-api-key': currentKey,
-                    },
+                    headers: {'Content-Type': 'application/json', 'x-goog-api-key': currentKey},
                     body: jsonEncode(payload),
                   )
                   .timeout(const Duration(seconds: 25));
             } on TimeoutException {
               isTimeout = true;
               if (kDebugMode) {
-                debugPrint('🔄 [GeminiAiService] Timeout (25s) on model "$model", key index $keyIndex (attempt ${attempt + 1}/$maxSameKeyAttempts)');
+                debugPrint(
+                  '🔄 [GeminiAiService] Timeout (25s) on model "$model", key index $keyIndex (attempt ${attempt + 1}/$maxSameKeyAttempts)',
+                );
               }
             } on http.ClientException catch (e) {
               isClientNetworkError = true;
@@ -1666,7 +1611,9 @@ Required JSON Schema:
             }
 
             // Any other status code -> move to next key
-            debugPrint('🔄 [GeminiAiService] Unexpected HTTP $statusCode on model "$model", key index $keyIndex. Moving to next key...');
+            debugPrint(
+              '🔄 [GeminiAiService] Unexpected HTTP $statusCode on model "$model", key index $keyIndex. Moving to next key...',
+            );
             break;
           }
         }
@@ -1688,7 +1635,8 @@ Required JSON Schema:
 
   static Duration _parseCooldownDuration(String responseBody) {
     try {
-      final delayMatch = RegExp(r'retryDelay["\s:]+([0-9]+)s?', caseSensitive: false).firstMatch(responseBody) ??
+      final delayMatch =
+          RegExp(r'retryDelay["\s:]+([0-9]+)s?', caseSensitive: false).firstMatch(responseBody) ??
           RegExp(r'retry after\s+([0-9]+)\s*s?', caseSensitive: false).firstMatch(responseBody) ??
           RegExp(r'([0-9]+)s\b').firstMatch(responseBody);
       if (delayMatch != null) {
@@ -1705,16 +1653,12 @@ Required JSON Schema:
     final Map<String, dynamic> responseJson = jsonDecode(body) as Map<String, dynamic>;
     final candidates = responseJson['candidates'] as List<dynamic>?;
     if (candidates == null || candidates.isEmpty) {
-      throw GeminiApiException(
-        userMessage: 'The AI service returned an empty response. Please try again.',
-      );
+      throw GeminiApiException(userMessage: 'The AI service returned an empty response. Please try again.');
     }
 
     final parts = candidates[0]['content']?['parts'] as List<dynamic>?;
     if (parts == null || parts.isEmpty) {
-      throw GeminiApiException(
-        userMessage: 'The AI service returned no readable clinical content.',
-      );
+      throw GeminiApiException(userMessage: 'The AI service returned no readable clinical content.');
     }
 
     final String rawText = parts[0]['text']?.toString() ?? '';
@@ -1765,10 +1709,7 @@ Never guess unreadable text; use null.
 ''';
 
   /// Reads a student ID card photo. Returns the raw JSON from the vision model.
-  Future<Map<String, dynamic>> analyzeStudentIdCard({
-    required String fileName,
-    required Uint8List fileBytes,
-  }) {
+  Future<Map<String, dynamic>> analyzeStudentIdCard({required String fileName, required Uint8List fileBytes}) {
     return extractMedicalJson(
       fileName: fileName,
       fileSizeBytes: fileBytes.length,
@@ -1794,7 +1735,13 @@ Never guess unreadable text; use null.
 
     final cardId = digits(card['student_id']?.toString());
     final profileId = digits(profileStudentId);
-    final idMatch = cardId.isNotEmpty && profileId.isNotEmpty && (cardId == profileId || cardId.endsWith(profileId) || profileId.endsWith(cardId));
+    // Exact match; a suffix match is only allowed for a near-complete roll (e.g. OCR dropped a leading 0).
+    final shorter = cardId.length < profileId.length ? cardId : profileId;
+    final idMatch =
+        cardId.isNotEmpty &&
+        profileId.isNotEmpty &&
+        (cardId == profileId ||
+            (shorter.length >= 12 && (cardId.endsWith(profileId) || profileId.endsWith(cardId))));
 
     final a = norm(card['student_name']?.toString()).split(' ').where((t) => t.isNotEmpty).toSet();
     final b = norm(profileName).split(' ').where((t) => t.isNotEmpty).toSet();

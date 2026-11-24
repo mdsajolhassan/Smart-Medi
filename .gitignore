@@ -57,3 +57,6 @@ app.*.map.json
 
 # Local-only notes (credentials etc.)
 *.local.md
+
+# Firebase deploy cache
+.firebase/
