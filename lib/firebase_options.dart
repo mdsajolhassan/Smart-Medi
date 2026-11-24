@@ -41,46 +41,33 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAYPzm2EeejN-VcjC0lWwWN7gg9Nuezeeo',
-    appId: '1:506130896245:web:886f18ae9d9685aafe6f3c',
-    messagingSenderId: '506130896245',
-    projectId: 'smart-medi-b25ef',
-    authDomain: 'smart-medi-b25ef.firebaseapp.com',
-    storageBucket: 'smart-medi-b25ef.firebasestorage.app',
+    apiKey: 'AIzaSyBj6Wq5v1_4iBwU5gmXLEP1n3HYAINnIuI',
+    appId: '1:926730215261:web:09e4d63ec7ee59264092b4',
+    messagingSenderId: '926730215261',
+    projectId: 'smart-medi-galib',
+    authDomain: 'smart-medi-galib.firebaseapp.com',
+    storageBucket: 'smart-medi-galib.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyA_V8K5uRV88dVtzVc-7u-51o2wdXs6q0Q',
-    appId: '1:506130896245:android:f4f177ccf86e5f4dfe6f3c',
-    messagingSenderId: '506130896245',
-    projectId: 'smart-medi-b25ef',
-    storageBucket: 'smart-medi-b25ef.firebasestorage.app',
+    apiKey: 'AIzaSyAfhzwU_BYeGLsildEl2SYAjhcdchJeGmk',
+    appId: '1:926730215261:android:0dfa3334a469be9f4092b4',
+    messagingSenderId: '926730215261',
+    projectId: 'smart-medi-galib',
+    storageBucket: 'smart-medi-galib.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyC6HrrxNcBLDiUYsPi43lakAJeWmOIQ7Dk',
-    appId: '1:506130896245:ios:6c87f2163fb75b50fe6f3c',
-    messagingSenderId: '506130896245',
-    projectId: 'smart-medi-b25ef',
-    storageBucket: 'smart-medi-b25ef.firebasestorage.app',
+    apiKey: 'AIzaSyBh9Ked7v4DK8oZPSdhMTylePNTOwsROmY',
+    appId: '1:926730215261:ios:211f9722c59b941c4092b4',
+    messagingSenderId: '926730215261',
+    projectId: 'smart-medi-galib',
+    storageBucket: 'smart-medi-galib.firebasestorage.app',
     iosBundleId: 'bd.edu.baust.smartMedi',
   );
 
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyC6HrrxNcBLDiUYsPi43lakAJeWmOIQ7Dk',
-    appId: '1:506130896245:ios:6c87f2163fb75b50fe6f3c',
-    messagingSenderId: '506130896245',
-    projectId: 'smart-medi-b25ef',
-    storageBucket: 'smart-medi-b25ef.firebasestorage.app',
-    iosBundleId: 'bd.edu.baust.smartMedi',
-  );
+  static const FirebaseOptions macos = ios;
 
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAYPzm2EeejN-VcjC0lWwWN7gg9Nuezeeo',
-    appId: '1:506130896245:web:12501abc85025251fe6f3c',
-    messagingSenderId: '506130896245',
-    projectId: 'smart-medi-b25ef',
-    authDomain: 'smart-medi-b25ef.firebaseapp.com',
-    storageBucket: 'smart-medi-b25ef.firebasestorage.app',
-  );
+  // Windows desktop uses the web app registration.
+  static const FirebaseOptions windows = web;
 }

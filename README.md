@@ -344,7 +344,7 @@ flutter run -d ios
 2. **Multiplier Dispensing:** Use the quick **-1**, **-5**, **-10** or **+1**, **+5**, **+10** buttons to adjust stock levels during clinic rush hours.
 3. **Walk-In Check-In Log:** Record walk-in visits in the `patient_checkins` queue to track campus epidemiology.
 
-### 🛡️ 4. Super Administrator Flow (`mdsajolhasan5@gmail.com`)
+### 🛡️ 4. Super Administrator Flow (`serviceprovidergalib@gmail.com`)
 1. **Account Approvals:** Review external accounts (`@gmail.com`) in the approval queue and approve or reject them.
 2. **Role Overrides:** Elevate staff members to Doctor, Pharmacist, or Faculty roles.
 3. **Clinical Audit Inspection:** Audit `access_logs` to review which medical officers accessed student dossiers.
@@ -380,7 +380,7 @@ Smart Medi is developed for and in collaboration with the healthcare and enginee
 ### 👨‍💻 Engineering & Technical Leadership
 - **Md. Sajol Hassan** — *Lead Software Engineer & System Architect*  
   Department of Computer Science & Engineering (CSE), BAUST  
-  Email: `mdsajolhasan5@gmail.com`
+  Email: `serviceprovidergalib@gmail.com`
 
 ### 🎓 Academic Patronage & Advisory
 - **Dr. Md Nakib Hayat Chowdhury** — *Academic Advisor & Project Patron*  

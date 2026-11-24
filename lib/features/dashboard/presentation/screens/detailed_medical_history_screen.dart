@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../../emergency_sos/presentation/screens/sos_screen.dart';
 import '../../../medical_operations/data/models/prescription_model.dart';
 import '../../../medical_operations/data/services/prescription_pdf_service.dart';
 import '../../../medical_operations/presentation/screens/new_prescription_screen.dart';
+import '../../../../core/widgets/responsive.dart';
 
 /// Clinical Timeline Entry Model representing individual chronological milestones
 class ClinicalTimelineEntry {
@@ -88,9 +90,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
               : 'Not found - confirm with patient';
           final String? dosageOrDetails = (p['details']?.toString().trim().isNotEmpty ?? false)
               ? p['details'].toString().trim()
-              : ((p['dosage']?.toString().trim().isNotEmpty ?? false)
-                  ? p['dosage'].toString().trim()
-                  : null);
+              : ((p['dosage']?.toString().trim().isNotEmpty ?? false) ? p['dosage'].toString().trim() : null);
 
           entries.add(
             ClinicalTimelineEntry(
@@ -122,16 +122,16 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
           final String dosage = (m['dosage']?.toString().trim().isNotEmpty ?? false)
               ? m['dosage'].toString().trim()
               : ((m['dose']?.toString().trim().isNotEmpty ?? false)
-                  ? m['dose'].toString().trim()
-                  : 'Not found - confirm with patient');
+                    ? m['dose'].toString().trim()
+                    : 'Not found - confirm with patient');
           final String frequency = (m['frequency']?.toString().trim().isNotEmpty ?? false)
               ? m['frequency'].toString().trim()
               : 'Not found - confirm with patient';
           final String instructions = (m['instructions']?.toString().trim().isNotEmpty ?? false)
               ? m['instructions'].toString().trim()
               : ((m['duration_text']?.toString().trim().isNotEmpty ?? false)
-                  ? m['duration_text'].toString().trim()
-                  : 'Not found - confirm with patient');
+                    ? m['duration_text'].toString().trim()
+                    : 'Not found - confirm with patient');
           final String docStr = (m['doctor']?.toString().trim().isNotEmpty ?? false)
               ? m['doctor'].toString().trim()
               : '';
@@ -169,7 +169,8 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
           category: 'Prescription',
           description: itemsStr,
           dosageOrDetails: rx.advice != null && rx.advice!.trim().isNotEmpty ? rx.advice : null,
-          doctorOrFacility: 'Issued by BAUST Medical Center - ${rx.doctorName.trim().startsWith('Dr.') ? rx.doctorName.trim() : 'Dr. ${rx.doctorName.trim()}'}',
+          doctorOrFacility:
+              'Issued by BAUST Medical Center - ${rx.doctorName.trim().startsWith('Dr.') ? rx.doctorName.trim() : 'Dr. ${rx.doctorName.trim()}'}',
           icon: Icons.assignment_turned_in,
           color: BaustColors.primaryArmyGreen,
           prescription: rx,
@@ -213,7 +214,8 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
               doctorOrFacility: 'Not found - confirm with patient',
               icon: Icons.healing,
               color: Colors.blue.shade700,
-              isCritical: problem.toLowerCase().contains('asthma') ||
+              isCritical:
+                  problem.toLowerCase().contains('asthma') ||
                   problem.toLowerCase().contains('cardiac') ||
                   problem.toLowerCase().contains('diabetes'),
             ),
@@ -278,14 +280,13 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
     final String location;
     if (user != null) {
       if (user.isResidential) {
-        final hall = (user.residentialHall != null &&
+        final hall =
+            (user.residentialHall != null &&
                 user.residentialHall!.trim().isNotEmpty &&
                 !user.residentialHall!.contains('Non-Residential'))
             ? user.residentialHall!.trim()
             : null;
-        final room = (user.roomNumber != null &&
-                user.roomNumber!.trim().isNotEmpty &&
-                user.roomNumber != 'N/A')
+        final room = (user.roomNumber != null && user.roomNumber!.trim().isNotEmpty && user.roomNumber != 'N/A')
             ? user.roomNumber!.trim()
             : null;
         if (hall != null && room != null) {
@@ -347,10 +348,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: BaustColors.primaryNavy, foregroundColor: Colors.white),
             icon: const Icon(Icons.share, size: 16),
@@ -403,10 +401,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
 
     if (targetUid != null) {
       try {
-        historyStream = FirebaseFirestore.instance
-            .collection('medical_histories')
-            .doc(targetUid)
-            .snapshots();
+        historyStream = FirebaseFirestore.instance.collection('medical_histories').doc(targetUid).snapshots();
       } catch (_) {
         historyStream = null;
       }
@@ -484,7 +479,8 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
     final allEntries = _buildChronologicalTimeline(data, user, digitalPrescriptions);
 
     final filteredEntries = allEntries.where((entry) {
-      final matchesCategory = _selectedCategory == 'All' ||
+      final matchesCategory =
+          _selectedCategory == 'All' ||
           (_selectedCategory == 'Surgeries' && entry.category == 'Surgery') ||
           (_selectedCategory == 'Prescriptions' && entry.category == 'Prescription') ||
           (_selectedCategory == 'Conditions' && entry.category == 'Diagnosis') ||
@@ -492,7 +488,8 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
           (_selectedCategory == 'Critical Flags' && entry.isCritical);
 
       final query = _searchQuery.toLowerCase().trim();
-      final matchesQuery = query.isEmpty ||
+      final matchesQuery =
+          query.isEmpty ||
           entry.title.toLowerCase().contains(query) ||
           entry.description.toLowerCase().contains(query) ||
           entry.date.toLowerCase().contains(query) ||
@@ -519,9 +516,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
             ),
             Flexible(
               child: Text(
-                widget.isDoctorView
-                    ? 'Patient Medical History & Dossier'
-                    : 'Detailed Medical History & Dossier',
+                widget.isDoctorView ? 'Patient Medical History & Dossier' : 'Detailed Medical History & Dossier',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -538,191 +533,184 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
             IconButton(
               tooltip: 'Emergency SOS',
               icon: const Icon(Icons.emergency_outlined, color: BaustColors.emergencyRed),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SosScreen()),
-              ),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SosScreen())),
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Red Known Allergies Banner (Always shown in Doctor View)
-            if (widget.isDoctorView) ...[
-              _buildDoctorAllergiesBanner(data, widget.patientProfile),
+      body: ResponsiveCenter(
+        maxWidth: 1000,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Red Known Allergies Banner (Always shown in Doctor View)
+              if (widget.isDoctorView) ...[
+                _buildDoctorAllergiesBanner(data, widget.patientProfile),
+                const SizedBox(height: 16),
+              ],
+
+              // Patient Identification Banner
+              _buildPatientDossierBanner(user),
+
               const SizedBox(height: 16),
-            ],
 
-            // Patient Identification Banner
-            _buildPatientDossierBanner(user),
+              // Prescriptions Issued Section (Doctor & Student View)
+              _buildIssuedPrescriptionsSection(context, user, digitalPrescriptions, data),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Prescriptions Issued Section (Doctor & Student View)
-            _buildIssuedPrescriptionsSection(context, user, digitalPrescriptions, data),
+              // Metrics Summary Grid
+              _buildMetricsGrid(allEntries),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Metrics Summary Grid
-            _buildMetricsGrid(allEntries),
-
-            const SizedBox(height: 16),
-
-            // Search Bar
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search surgeries, prescriptions, conditions, notes...',
-                prefixIcon: const Icon(Icons.search, color: BaustColors.primaryNavy),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+              // Search Bar
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search surgeries, prescriptions, conditions, notes...',
+                  prefixIcon: const Icon(Icons.search, color: BaustColors.primaryNavy),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                onChanged: (val) => setState(() => _searchQuery = val),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Category Filter Chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['All', 'Surgeries', 'Prescriptions', 'Conditions', 'Clinical Notes', 'Critical Flags'].map(
+                    (category) {
+                      final isSelected = _selectedCategory == category;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          selected: isSelected,
+                          showCheckmark: false,
+                          label: Text(
+                            category,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : BaustColors.textDark,
+                            ),
+                          ),
+                          selectedColor: BaustColors.primaryNavy,
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(color: isSelected ? BaustColors.primaryNavy : Colors.grey.shade300),
+                          ),
+                          onSelected: (_) => setState(() => _selectedCategory = category),
+                        ),
+                      );
+                    },
+                  ).toList(),
                 ),
               ),
-              onChanged: (val) => setState(() => _searchQuery = val),
-            ),
 
-            const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
-            // Category Filter Chips
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+              // Section Title
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  'All',
-                  'Surgeries',
-                  'Prescriptions',
-                  'Conditions',
-                  'Clinical Notes',
-                  'Critical Flags',
-                ].map((category) {
-                  final isSelected = _selectedCategory == category;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      selected: isSelected,
-                      showCheckmark: false,
-                      label: Text(
-                        category,
+                  const Row(
+                    children: [
+                      Icon(Icons.timeline, color: BaustColors.primaryNavy, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'A-TO-Z CHRONOLOGICAL CLINICAL TIMELINE',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : BaustColors.textDark,
+                          letterSpacing: 1,
+                          color: BaustColors.primaryNavy,
                         ),
                       ),
-                      selectedColor: BaustColors.primaryNavy,
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(
-                          color: isSelected ? BaustColors.primaryNavy : Colors.grey.shade300,
-                        ),
-                      ),
-                      onSelected: (_) => setState(() => _selectedCategory = category),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Section Title
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.timeline, color: BaustColors.primaryNavy, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'A-TO-Z CHRONOLOGICAL CLINICAL TIMELINE',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                        color: BaustColors.primaryNavy,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '${filteredEntries.length} Records',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BaustColors.textMuted),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            if (filteredEntries.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(Icons.search_off, size: 40, color: BaustColors.textMuted),
-                    const SizedBox(height: 10),
-                    Text(
-                      allEntries.isEmpty
-                          ? (widget.isDoctorView
-                              ? 'This student has not uploaded a medical history yet.'
-                              : 'Not found - confirm with patient')
-                          : 'No timeline entries match your filter',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      allEntries.isEmpty
-                          ? (widget.isDoctorView
-                              ? 'No medical documents or prescriptions have been submitted by this student.'
-                              : 'No clinical records found in medical history for this patient.')
-                          : 'Try selecting a different category or clearing search.',
-                      style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredEntries.length,
-                itemBuilder: (context, index) {
-                  final item = filteredEntries[index];
-                  final isLast = index == filteredEntries.length - 1;
-                  return _buildTimelineItem(item, isLast);
-                },
+                    ],
+                  ),
+                  Text(
+                    '${filteredEntries.length} Records',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BaustColors.textMuted),
+                  ),
+                ],
               ),
 
-            const SizedBox(height: 24),
-          ],
+              const SizedBox(height: 12),
+
+              if (filteredEntries.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.search_off, size: 40, color: BaustColors.textMuted),
+                      const SizedBox(height: 10),
+                      Text(
+                        allEntries.isEmpty
+                            ? (widget.isDoctorView
+                                  ? 'This student has not uploaded a medical history yet.'
+                                  : 'Not found - confirm with patient')
+                            : 'No timeline entries match your filter',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        allEntries.isEmpty
+                            ? (widget.isDoctorView
+                                  ? 'No medical documents or prescriptions have been submitted by this student.'
+                                  : 'No clinical records found in medical history for this patient.')
+                            : 'Try selecting a different category or clearing search.',
+                        style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredEntries.length,
+                  itemBuilder: (context, index) {
+                    final item = filteredEntries[index];
+                    final isLast = index == filteredEntries.length - 1;
+                    return _buildTimelineItem(item, isLast);
+                  },
+                ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
@@ -748,14 +736,13 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
     final String location;
     if (user != null) {
       if (user.isResidential) {
-        final hall = (user.residentialHall != null &&
+        final hall =
+            (user.residentialHall != null &&
                 user.residentialHall!.trim().isNotEmpty &&
                 !user.residentialHall!.contains('Non-Residential'))
             ? user.residentialHall!.trim()
             : null;
-        final room = (user.roomNumber != null &&
-                user.roomNumber!.trim().isNotEmpty &&
-                user.roomNumber != 'N/A')
+        final room = (user.roomNumber != null && user.roomNumber!.trim().isNotEmpty && user.roomNumber != 'N/A')
             ? user.roomNumber!.trim()
             : null;
         if (hall != null && room != null) {
@@ -790,13 +777,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -818,21 +799,14 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                         Expanded(
                           child: Text(
                             name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isBloodKnown ? 10 : 8,
-                                vertical: 4,
-                              ),
+                              padding: EdgeInsets.symmetric(horizontal: isBloodKnown ? 10 : 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: isBloodKnown ? BaustColors.emergencyRed : Colors.grey.shade700,
                                 borderRadius: BorderRadius.circular(8),
@@ -974,13 +948,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                 ),
                 child: Icon(item.icon, size: 16, color: item.color),
               ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: Colors.grey.shade300,
-                  ),
-                ),
+              if (!isLast) Expanded(child: Container(width: 2, color: Colors.grey.shade300)),
             ],
           ),
           const SizedBox(width: 14),
@@ -997,11 +965,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                   width: item.isCritical ? 1.5 : 1,
                 ),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
+                  BoxShadow(color: Colors.grey.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2)),
                 ],
               ),
               child: Column(
@@ -1028,28 +992,17 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                       ),
                       Text(
                         item.date,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: BaustColors.textMuted,
-                        ),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.textMuted),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     item.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: BaustColors.textDark,
-                    ),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: BaustColors.textDark),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    item.description,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.3),
-                  ),
+                  Text(item.description, style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.3)),
                   if (item.dosageOrDetails != null && item.dosageOrDetails!.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Container(
@@ -1067,7 +1020,11 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                           Expanded(
                             child: Text(
                               item.dosageOrDetails!,
-                              style: const TextStyle(fontSize: 11, color: BaustColors.textDark, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: BaustColors.textDark,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -1083,7 +1040,11 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                         Expanded(
                           child: Text(
                             item.doctorOrFacility!,
-                            style: const TextStyle(fontSize: 11, color: BaustColors.textMuted, fontStyle: FontStyle.italic),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: BaustColors.textMuted,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ),
                       ],
@@ -1116,11 +1077,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                       ),
                       child: const Text(
                         'AI-extracted, unverified - confirm with patient',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF78350F),
-                        ),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF78350F)),
                       ),
                     ),
                   ],
@@ -1148,13 +1105,12 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
       MaterialPageRoute(
         builder: (_) => NewPrescriptionScreen(
           studentUid: widget.studentUid ?? user?.uid ?? '',
-          studentId: user?.studentRoll ??
+          studentId:
+              user?.studentRoll ??
               widget.patientProfile?['studentRoll']?.toString() ??
               widget.patientProfile?['studentId']?.toString() ??
               '',
-          studentName: user?.displayName ??
-              widget.patientProfile?['displayName']?.toString() ??
-              'Student',
+          studentName: user?.displayName ?? widget.patientProfile?['displayName']?.toString() ?? 'Student',
           knownAllergies: allergies,
           studentDepartment: user?.department ?? widget.patientProfile?['department']?.toString(),
           studentBloodGroup: user?.bloodGroup ?? widget.patientProfile?['bloodGroup']?.toString(),
@@ -1225,9 +1181,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
               ),
             )
           else
-            Column(
-              children: prescriptions.map((rx) => _buildPrescriptionCard(context, user, rx)).toList(),
-            ),
+            Column(children: prescriptions.map((rx) => _buildPrescriptionCard(context, user, rx)).toList()),
         ],
       ),
     );
@@ -1278,10 +1232,7 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
                 child: Text(
                   dateStr,
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.textDark),
@@ -1347,24 +1298,16 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
   Widget _buildDoctorAllergiesBanner(Map<String, dynamic>? data, Map<String, dynamic>? patientProfile) {
     final List<String> allergies = [];
     if (data != null && data['knownAllergies'] is List) {
-      allergies.addAll(
-        (data['knownAllergies'] as List)
-            .map((e) => e.toString().trim())
-            .where((s) => s.isNotEmpty),
-      );
+      allergies.addAll((data['knownAllergies'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty));
     }
     if (allergies.isEmpty && patientProfile != null && patientProfile['criticalFlags'] is List) {
       allergies.addAll(
-        (patientProfile['criticalFlags'] as List)
-            .map((e) => e.toString().trim())
-            .where((s) => s.isNotEmpty),
+        (patientProfile['criticalFlags'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty),
       );
     }
 
     final bool hasAllergies = allergies.isNotEmpty;
-    final String allergiesText = hasAllergies
-        ? allergies.join(', ')
-        : 'Not found - confirm with patient';
+    final String allergiesText = hasAllergies ? allergies.join(', ') : 'Not found - confirm with patient';
 
     return Container(
       width: double.infinity,
@@ -1403,19 +1346,12 @@ class _DetailedMedicalHistoryScreenState extends ConsumerState<DetailedMedicalHi
                   hasAllergies
                       ? 'Known Allergies: $allergiesText'
                       : 'Known allergies: Not found - confirm with patient',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 const Text(
                   'Cross-check contraindications and verify directly with patient prior to prescribing.',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
                 ),
               ],
             ),

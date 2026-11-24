@@ -54,3 +54,6 @@ app.*.map.json
 
 # Node dependencies (used by rules_tests)
 **/node_modules/
+
+# Local-only notes (credentials etc.)
+*.local.md

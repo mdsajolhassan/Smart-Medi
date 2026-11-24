@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -32,12 +33,7 @@ class FcmNotificationService {
       _messaging = FirebaseMessaging.instance;
 
       // Request push permissions for iOS / Web / Android 13+
-      final settings = await _messaging?.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        criticalAlert: true,
-      );
+      final settings = await _messaging?.requestPermission(alert: true, badge: true, sound: true, criticalAlert: true);
 
       debugPrint('FCM Notification Authorization Status: ${settings?.authorizationStatus}');
 

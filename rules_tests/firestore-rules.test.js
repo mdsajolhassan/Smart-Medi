@@ -598,7 +598,7 @@ describe('Smart Medi Firestore Security Rules Unit Tests (Phase 1 Second Hardeni
   // 17. SuperAdmin: email/password token (email_verified false) is DENIED; google.com verified token is ALLOWED
   it('17. SuperAdmin: email/password token (email_verified false) is DENIED; google.com verified token is ALLOWED', async () => {
     const unverifiedPasswordSuperAdminDb = testEnv.authenticatedContext('superadmin_uid', {
-      email: 'mdsajolhasan5@gmail.com',
+      email: 'serviceprovidergalib@gmail.com',
       email_verified: false,
       firebase: {
         sign_in_provider: 'password',
@@ -613,7 +613,7 @@ describe('Smart Medi Firestore Security Rules Unit Tests (Phase 1 Second Hardeni
     await assertFails(unverifiedPasswordSuperAdminDb.collection('users').doc('some_user').get());
 
     const verifiedGoogleSuperAdminDb = testEnv.authenticatedContext('superadmin_uid', {
-      email: 'mdsajolhasan5@gmail.com',
+      email: 'serviceprovidergalib@gmail.com',
       email_verified: true,
       firebase: {
         sign_in_provider: 'google.com',
@@ -830,7 +830,7 @@ describe('Smart Medi Firestore Security Rules Unit Tests (Phase 1 Second Hardeni
     }));
 
     const superAdminDb = testEnv.authenticatedContext('superadmin_uid', {
-      email: 'mdsajolhasan5@gmail.com',
+      email: 'serviceprovidergalib@gmail.com',
       email_verified: true,
       firebase: {
         sign_in_provider: 'google.com',

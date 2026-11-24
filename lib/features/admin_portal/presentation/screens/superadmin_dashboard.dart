@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/config/auth_config.dart';
 import '../../../../core/constants/baust_constants.dart';
 import '../../../../core/widgets/smart_medi_drawer.dart';
@@ -18,8 +20,8 @@ class SuperAdminDashboard extends ConsumerStatefulWidget {
 }
 
 class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
-  // Pre-populated real faculty items with Firestore sync capability
-  final List<Map<String, String?>> _provisionedFaculty = List.from(BaustSeedData.initialFaculty);
+  // Faculty records are loaded live from Firestore (no hard-coded people).
+  final List<Map<String, String?>> _provisionedFaculty = [];
   String _selectedFilter = 'All';
 
   // Registered System Accounts & Testing Overview
@@ -30,100 +32,13 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
   StreamSubscription? _sosSubscription;
   final List<Map<String, dynamic>> _activeEmergencyAlerts = [];
 
-  // Static baseline roster of system accounts for BAUST Smart Medi
-  static final List<Map<String, dynamic>> _initialSystemAccounts = [
-    {
-      'name': 'MD. Sajol Hasan',
-      'email': AuthConfig.superAdminEmail,
-      'role': 'superadmin',
-      'roleDisplay': 'Super Administrator',
-      'department': 'Central Administration / IT Cell',
-      'designation': 'Chief System Architect & SuperAdmin',
-      'status': 'Verified & Absolute Access',
-      'isSuperAdmin': true,
-      'badgeColor': const Color(0xFFF59E0B),
-    },
-    {
-      'name': 'MD. Sajol Hassan',
-      'email': '0802420205101137@baust.edu.bd',
-      'studentRoll': '0802420205101137',
-      'role': 'student',
-      'roleDisplay': 'Student',
-      'department': 'Computer Science & Engineering (CSE)',
-      'hall': 'Shaheed Dr. Zikrul Haque Hall (SDZHH)',
-      'room': '402-B',
-      'blood': 'B+',
-      'status': 'Verified & Active Student',
-      'badgeColor': BaustColors.primaryArmyGreen,
-    },
-    {
-      'name': 'Dr. Fowzia Jahan',
-      'email': 'medicalcenter@baust.edu.bd',
-      'phone': '01769-675576',
-      'role': 'doctor',
-      'roleDisplay': 'Senior Medical Officer / Doctor',
-      'department': 'BAUST Medical Center',
-      'designation': 'Senior Medical Officer',
-      'status': 'Approved Medical Doctor',
-      'badgeColor': BaustColors.emergencyRed,
-    },
-    {
-      'name': 'Md. Mozaffor Hossain',
-      'email': null,
-      'phone': '01712-645975',
-      'role': 'pharmacist',
-      'roleDisplay': 'Medical Assistant / Pharmacist',
-      'department': 'BAUST Medical Center',
-      'designation': 'Medical Assistant & Pharmacist',
-      'status': 'Approved Pharmacist & Medical Assistant',
-      'badgeColor': BaustColors.primaryArmyGreen,
-    },
-    {
-      'name': 'Lamia Aktar Limu',
-      'email': 'limuakhtar9@gmail.com',
-      'phone': '01749-898473',
-      'role': 'nurse',
-      'roleDisplay': 'Staff Nurse',
-      'department': 'BAUST Medical Center',
-      'designation': 'Staff Nurse',
-      'status': 'Approved Nurse',
-      'badgeColor': const Color(0xFF0284C7),
-    },
-    {
-      'name': 'Dr. Md Nakib Hayat Chowdhury',
-      'email': null,
-      'phone': '01769675560',
-      'role': 'staff',
-      'roleDisplay': 'Head of Department (CSE)',
-      'department': 'Computer Science & Engineering (CSE)',
-      'designation': 'Head of Department (CSE) / Associate Professor',
-      'status': 'Head of Department',
-      'badgeColor': BaustColors.primaryNavy,
-    },
-  ];
-
+  // Accounts are loaded live from Firestore (no hard-coded people).
   late final List<Map<String, dynamic>> _systemAccounts;
 
   @override
   void initState() {
     super.initState();
-    _systemAccounts = List.from(_initialSystemAccounts);
-
-    // Initial simulated active SOS from student Sajol Hassan for instant testing
-    _activeEmergencyAlerts.add({
-      'alertId': 'sos_init_sajol',
-      'studentName': 'MD. Sajol Hassan',
-      'studentRoll': '0802420205101137',
-      'department': 'Dept of CSE',
-      'hall': 'Shaheed Dr. Zikrul Haque Hall (SDZHH)',
-      'room': '402-B',
-      'symptom': 'Acute Chest Pain / Respiratory Distress',
-      'blood': 'B+',
-      'time': 'Just now',
-      'status': 'TRIGGERED',
-      'emergencyContact': 'Campus Emergency Roster',
-      'criticalFlags': ['Asthma History', 'Penicillin Allergy'],
-    });
+    _systemAccounts = [];
 
     _listenToEmergencyAlerts();
     _listenToFaculty();
@@ -144,35 +59,35 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
           .orderBy('triggeredAt', descending: true)
           .snapshots()
           .listen((snapshot) {
-        final List<Map<String, dynamic>> liveAlerts = [];
-        for (final doc in snapshot.docs) {
-          final data = doc.data();
-          final status = (data['status'] ?? 'TRIGGERED').toString();
-          if (status != 'RESOLVED') {
-            liveAlerts.add({
-              'alertId': data['alertId'] ?? doc.id,
-              'studentName': data['studentName'] ?? 'Unknown Student',
-              'studentRoll': data['studentRoll'] ?? data['studentId'] ?? 'N/A',
-              'department': data['department'] ?? 'General',
-              'hall': data['hall'] ?? 'Campus Area',
-              'room': data['roomNumber'] ?? 'N/A',
-              'symptom': data['symptomCategory'] ?? 'Critical Emergency',
-              'blood': 'B+',
-              'time': 'Active',
-              'status': status,
-              'emergencyContact': data['emergencyContact'],
-              'criticalFlags': List<String>.from(data['criticalFlags'] ?? []),
-            });
-          }
-        }
+            final List<Map<String, dynamic>> liveAlerts = [];
+            for (final doc in snapshot.docs) {
+              final data = doc.data();
+              final status = (data['status'] ?? 'TRIGGERED').toString();
+              if (status != 'RESOLVED') {
+                liveAlerts.add({
+                  'alertId': data['alertId'] ?? doc.id,
+                  'studentName': data['studentName'] ?? 'Unknown Student',
+                  'studentRoll': data['studentRoll'] ?? data['studentId'] ?? 'N/A',
+                  'department': data['department'] ?? 'General',
+                  'hall': data['hall'] ?? 'Campus Area',
+                  'room': data['roomNumber'] ?? 'N/A',
+                  'symptom': data['symptomCategory'] ?? 'Critical Emergency',
+                  'blood': 'B+',
+                  'time': 'Active',
+                  'status': status,
+                  'emergencyContact': data['emergencyContact'],
+                  'criticalFlags': List<String>.from(data['criticalFlags'] ?? []),
+                });
+              }
+            }
 
-        if (mounted && liveAlerts.isNotEmpty) {
-          setState(() {
-            _activeEmergencyAlerts.clear();
-            _activeEmergencyAlerts.addAll(liveAlerts);
-          });
-        }
-      }, onError: (_) {});
+            if (mounted && liveAlerts.isNotEmpty) {
+              setState(() {
+                _activeEmergencyAlerts.clear();
+                _activeEmergencyAlerts.addAll(liveAlerts);
+              });
+            }
+          }, onError: (_) {});
     } catch (_) {
       // Offline / unit test safe fallback
     }
@@ -188,10 +103,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
 
     try {
       final alertId = alert['alertId'];
-      FirebaseFirestore.instance
-          .collection(FirestoreCollections.emergencyAlerts)
-          .doc(alertId)
-          .update({
+      FirebaseFirestore.instance.collection(FirestoreCollections.emergencyAlerts).doc(alertId).update({
         'status': 'AMBULANCE_DISPATCHED',
         'acknowledgedAt': FieldValue.serverTimestamp(),
       });
@@ -219,11 +131,11 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
   void _simulateStudentSos() {
     final newAlert = {
       'alertId': 'sos_sim_${DateTime.now().millisecondsSinceEpoch}',
-      'studentName': 'MD. Sajol Hassan',
-      'studentRoll': '0802420205101137',
+      'studentName': 'Demo Student',
+      'studentRoll': '0802420205109001',
       'department': 'Dept of CSE',
-      'hall': 'Shaheed Dr. Zikrul Haque Hall (SDZHH)',
-      'room': '402-B',
+      'hall': 'Abbas Uddin Ahmed Hall (AUAH)',
+      'room': '214',
       'symptom': 'Severe Asthma Exacerbation / Acute Chest Pain',
       'blood': 'B+',
       'time': 'Just now',
@@ -245,7 +157,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
             Icon(Icons.warning, color: Colors.white),
             SizedBox(width: 8),
             Expanded(
-              child: Text('[Test Tool] Simulated SOS triggered for Student MD. Sajol Hassan (0802420205101137)!'),
+              child: Text('[Test Tool] Simulated SOS triggered for Student Demo Student (0802420205109001)!'),
             ),
           ],
         ),
@@ -261,65 +173,69 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
       _facultySubscription = FirebaseFirestore.instance
           .collection(FirestoreCollections.faculty)
           .snapshots()
-          .listen((snapshot) {
-        if (!mounted) return;
+          .listen(
+            (snapshot) {
+              if (!mounted) return;
 
-        final List<Map<String, String?>> liveFaculty = [];
-        final List<Map<String, dynamic>> liveAccounts = [];
+              final List<Map<String, String?>> liveFaculty = [];
+              final List<Map<String, dynamic>> liveAccounts = [];
 
-        for (final doc in snapshot.docs) {
-          final data = doc.data();
-          final facultyMap = <String, String?>{
-            'name': data['name']?.toString() ?? 'Unknown Faculty',
-            'designation': data['designation']?.toString() ?? 'Faculty Member',
-            'department': data['department']?.toString() ?? 'General',
-            'email': data['email']?.toString(),
-            'phone': data['phone']?.toString(),
-            'accessLevel': data['accessLevel']?.toString() ?? 'Faculty',
-            'role': data['role']?.toString() ?? 'staff',
-            'docId': doc.id,
-          };
-          liveFaculty.add(facultyMap);
+              for (final doc in snapshot.docs) {
+                final data = doc.data();
+                final facultyMap = <String, String?>{
+                  'name': data['name']?.toString() ?? 'Unknown Faculty',
+                  'designation': data['designation']?.toString() ?? 'Faculty Member',
+                  'department': data['department']?.toString() ?? 'General',
+                  'email': data['email']?.toString(),
+                  'phone': data['phone']?.toString(),
+                  'accessLevel': data['accessLevel']?.toString() ?? 'Faculty',
+                  'role': data['role']?.toString() ?? 'staff',
+                  'docId': doc.id,
+                };
+                liveFaculty.add(facultyMap);
 
-          final isMedical = (data['department']?.toString() == 'BAUST Medical Center') ||
-              (data['role'] == 'doctor' || data['role'] == 'pharmacist' || data['role'] == 'nurse');
+                final isMedical =
+                    (data['department']?.toString() == 'BAUST Medical Center') ||
+                    (data['role'] == 'doctor' || data['role'] == 'pharmacist' || data['role'] == 'nurse');
 
-          liveAccounts.add({
-            'name': data['name'] ?? 'Faculty Member',
-            'email': data['email'],
-            'phone': data['phone'],
-            'role': data['role'] ?? 'staff',
-            'roleDisplay': data['designation'] ?? 'Faculty Member',
-            'department': data['department'] ?? 'Academic Wing',
-            'designation': data['designation'] ?? 'Faculty',
-            'status': 'Verified & Active Personnel',
-            'isSuperAdmin': false,
-            'badgeColor': isMedical ? BaustColors.emergencyRed : BaustColors.primaryNavy,
-          });
-        }
+                liveAccounts.add({
+                  'name': data['name'] ?? 'Faculty Member',
+                  'email': data['email'],
+                  'phone': data['phone'],
+                  'role': data['role'] ?? 'staff',
+                  'roleDisplay': data['designation'] ?? 'Faculty Member',
+                  'department': data['department'] ?? 'Academic Wing',
+                  'designation': data['designation'] ?? 'Faculty',
+                  'status': 'Verified & Active Personnel',
+                  'isSuperAdmin': false,
+                  'badgeColor': isMedical ? BaustColors.emergencyRed : BaustColors.primaryNavy,
+                });
+              }
 
-        setState(() {
-          for (final f in liveFaculty) {
-            final exists = _provisionedFaculty.any(
-              (e) => (f['email'] != null && e['email'] == f['email']) || e['name'] == f['name'],
-            );
-            if (!exists) {
-              _provisionedFaculty.insert(0, f);
-            }
-          }
+              setState(() {
+                for (final f in liveFaculty) {
+                  final exists = _provisionedFaculty.any(
+                    (e) => (f['email'] != null && e['email'] == f['email']) || e['name'] == f['name'],
+                  );
+                  if (!exists) {
+                    _provisionedFaculty.insert(0, f);
+                  }
+                }
 
-          for (final a in liveAccounts) {
-            final exists = _systemAccounts.any(
-              (e) => (a['email'] != null && e['email'] == a['email']) || e['name'] == a['name'],
-            );
-            if (!exists) {
-              _systemAccounts.add(a);
-            }
-          }
-        });
-      }, onError: (e) {
-        debugPrint('[SuperAdmin] Notice loading faculty from Firestore: $e');
-      });
+                for (final a in liveAccounts) {
+                  final exists = _systemAccounts.any(
+                    (e) => (a['email'] != null && e['email'] == a['email']) || e['name'] == a['name'],
+                  );
+                  if (!exists) {
+                    _systemAccounts.add(a);
+                  }
+                }
+              });
+            },
+            onError: (e) {
+              debugPrint('[SuperAdmin] Notice loading faculty from Firestore: $e');
+            },
+          );
     } catch (e) {
       debugPrint('[SuperAdmin] Error attaching faculty listener: $e');
     }
@@ -338,9 +254,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => StatefulBuilder(
         builder: (modalCtx, setModalState) => Padding(
           padding: EdgeInsets.only(
@@ -361,16 +275,9 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                     children: [
                       const Text(
                         'Provision Faculty Role',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: BaustColors.primaryNavy,
-                        ),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: BaustColors.primaryNavy),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
                     ],
                   ),
                   const Text(
@@ -433,7 +340,12 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       prefixIcon: Icon(Icons.domain, color: BaustColors.primaryNavy),
                     ),
                     items: BaustDepartments.departments
-                        .map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
+                        .map(
+                          (d) => DropdownMenuItem(
+                            value: d,
+                            child: Text(d, style: const TextStyle(fontSize: 13)),
+                          ),
+                        )
                         .toList(),
                     onChanged: (val) {
                       if (val != null) setModalState(() => selectedDept = val);
@@ -449,7 +361,12 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       prefixIcon: Icon(Icons.workspace_premium, color: BaustColors.primaryNavy),
                     ),
                     items: FacultyDesignations.designations
-                        .map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
+                        .map(
+                          (d) => DropdownMenuItem(
+                            value: d,
+                            child: Text(d, style: const TextStyle(fontSize: 13)),
+                          ),
+                        )
                         .toList(),
                     onChanged: (val) {
                       if (val != null) setModalState(() => selectedDesignation = val);
@@ -465,7 +382,12 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       prefixIcon: Icon(Icons.admin_panel_settings_outlined, color: BaustColors.emergencyRed),
                     ),
                     items: FacultyAccessRoles.roles
-                        .map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 13))))
+                        .map(
+                          (r) => DropdownMenuItem(
+                            value: r,
+                            child: Text(r, style: const TextStyle(fontSize: 13)),
+                          ),
+                        )
                         .toList(),
                     onChanged: (val) {
                       if (val != null) setModalState(() => selectedRole = val);
@@ -482,7 +404,11 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: _isProvisioningFaculty
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
                         : const Icon(Icons.how_to_reg),
                     label: Text(
                       _isProvisioningFaculty ? 'Provisioning...' : 'Provision & Assign Role',
@@ -521,9 +447,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
 
                               try {
                                 // Save to Firestore faculty collection
-                                await FirebaseFirestore.instance
-                                    .collection(FirestoreCollections.faculty)
-                                    .add({
+                                await FirebaseFirestore.instance.collection(FirestoreCollections.faculty).add({
                                   ...newFaculty,
                                   'provisionedAt': FieldValue.serverTimestamp(),
                                   'provisionedBy': AuthConfig.superAdminEmail,
@@ -577,9 +501,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                                       children: [
                                         const Icon(Icons.check_circle, color: Colors.white),
                                         const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text('✅ Successfully provisioned $name as $selectedRole!'),
-                                        ),
+                                        Expanded(child: Text('✅ Successfully provisioned $name as $selectedRole!')),
                                       ],
                                     ),
                                   ),
@@ -612,9 +534,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                                       children: [
                                         const Icon(Icons.cloud_off, color: Colors.white),
                                         const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text('⚠️ Provisioned locally ($name). Cloud notice: $e'),
-                                        ),
+                                        Expanded(child: Text('⚠️ Provisioned locally ($name). Cloud notice: $e')),
                                       ],
                                     ),
                                   ),
@@ -641,8 +561,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
         return f['department'] == 'BAUST Medical Center';
       }
       if (_selectedFilter == 'Central Administration') {
-        return f['department'] == 'Central Administration' ||
-            f['department'] == 'Examination Wing';
+        return f['department'] == 'Central Administration' || f['department'] == 'Examination Wing';
       }
       if (_selectedFilter == 'Academic Departments') {
         return f['department'] != 'BAUST Medical Center' &&
@@ -657,7 +576,8 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
     return _systemAccounts.where((acc) {
       final role = (acc['role'] ?? '').toString().toLowerCase();
 
-      final matchesFilter = _accountFilter == 'All Accounts' ||
+      final matchesFilter =
+          _accountFilter == 'All Accounts' ||
           (_accountFilter == 'Students' && role == 'student') ||
           (_accountFilter == 'Doctors' && role == 'doctor') ||
           (_accountFilter == 'Pharmacists & Nurses' && (role == 'pharmacist' || role == 'nurse')) ||
@@ -670,7 +590,8 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
       final roll = (acc['studentRoll'] ?? '').toString().toLowerCase();
       final dept = (acc['department'] ?? '').toString().toLowerCase();
 
-      final matchesSearch = q.isEmpty ||
+      final matchesSearch =
+          q.isEmpty ||
           name.contains(q) ||
           email.contains(q) ||
           phone.contains(q) ||
@@ -720,12 +641,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                 fit: BoxFit.contain,
               ),
             ),
-            const Flexible(
-              child: Text(
-                'SuperAdmin — System Hierarchy',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            const Flexible(child: Text('SuperAdmin — System Hierarchy', overflow: TextOverflow.ellipsis)),
           ],
         ),
         actions: [
@@ -770,12 +686,8 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user?.displayName ?? 'MD. Sajol Hasan',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          user?.displayName ?? 'Super Admin',
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -808,7 +720,8 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                 const SizedBox(width: 8),
                 _buildStatCard(
                   title: 'Medical Center',
-                  count: '${_systemAccounts.where((a) => a['role'] == 'doctor' || a['role'] == 'pharmacist' || a['role'] == 'nurse').length}',
+                  count:
+                      '${_systemAccounts.where((a) => a['role'] == 'doctor' || a['role'] == 'pharmacist' || a['role'] == 'nurse').length}',
                   icon: Icons.local_hospital_outlined,
                   color: BaustColors.emergencyRed,
                 ),
@@ -841,11 +754,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       SizedBox(width: 8),
                       Text(
                         'Elevated Operations & Direct Portals',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: BaustColors.textDark,
-                        ),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: BaustColors.textDark),
                       ),
                     ],
                   ),
@@ -862,13 +771,14 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                           icon: const Icon(Icons.local_hospital, color: BaustColors.emergencyRed, size: 18),
                           label: const Text(
                             'Doctor / SOS',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.emergencyRed),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: BaustColors.emergencyRed,
+                            ),
                           ),
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()));
                           },
                         ),
                       ),
@@ -883,7 +793,11 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                           icon: const Icon(Icons.medication, color: BaustColors.primaryArmyGreen, size: 18),
                           label: const Text(
                             'Pharmacy',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.primaryArmyGreen),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: BaustColors.primaryArmyGreen,
+                            ),
                           ),
                           onPressed: () {
                             Navigator.push(
@@ -907,10 +821,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.primaryNavy),
                           ),
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
                           },
                         ),
                       ),
@@ -1004,7 +915,10 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                   elevation: 0,
                 ),
                 icon: const Icon(Icons.add_alert, size: 14),
-                label: const Text('Simulate SOS (Test Tool)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'Simulate SOS (Test Tool)',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
                 onPressed: _simulateStudentSos,
               ),
             ],
@@ -1026,7 +940,10 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: const Center(
-                child: Text('No active emergency SOS alerts currently in queue.', style: TextStyle(fontSize: 12, color: BaustColors.textMuted)),
+                child: Text(
+                  'No active emergency SOS alerts currently in queue.',
+                  style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
+                ),
               ),
             )
           else
@@ -1054,7 +971,11 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                         Expanded(
                           child: Text(
                             '${alert['studentName']} (${alert['studentRoll']})',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: BaustColors.textDark),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: BaustColors.textDark,
+                            ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
@@ -1078,10 +999,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       'Location: ${alert['hall']} • Room ${alert['room']}',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: BaustColors.primaryNavy),
                     ),
-                    Text(
-                      'Symptom: ${alert['symptom']}',
-                      style: TextStyle(fontSize: 12, color: Colors.red.shade900),
-                    ),
+                    Text('Symptom: ${alert['symptom']}', style: TextStyle(fontSize: 12, color: Colors.red.shade900)),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -1110,12 +1028,12 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           icon: const Icon(Icons.open_in_new, size: 14),
-                          label: const Text('Doctor Portal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: const Text(
+                            'Doctor Portal',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()));
                           },
                         ),
                       ],
@@ -1200,13 +1118,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
-            children: [
-              'All Accounts',
-              'Students',
-              'Doctors',
-              'Pharmacists & Nurses',
-              'SuperAdmin',
-            ].map((cat) {
+            children: ['All Accounts', 'Students', 'Doctors', 'Pharmacists & Nurses', 'SuperAdmin'].map((cat) {
               final isSelected = _accountFilter == cat;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -1247,7 +1159,10 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
               border: Border.all(color: Colors.grey.shade200),
             ),
             child: const Center(
-              child: Text('No system accounts match the query.', style: TextStyle(fontSize: 12, color: BaustColors.textMuted)),
+              child: Text(
+                'No system accounts match the query.',
+                style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
+              ),
             ),
           )
         else
@@ -1276,10 +1191,10 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                     color: isSuperAdmin
                         ? const Color(0xFFF59E0B)
                         : isDoctor
-                            ? BaustColors.emergencyRed.withValues(alpha: 0.5)
-                            : isStudent
-                                ? BaustColors.primaryArmyGreen.withValues(alpha: 0.4)
-                                : Colors.grey.shade200,
+                        ? BaustColors.emergencyRed.withValues(alpha: 0.5)
+                        : isStudent
+                        ? BaustColors.primaryArmyGreen.withValues(alpha: 0.4)
+                        : Colors.grey.shade200,
                     width: isSuperAdmin ? 1.5 : 1,
                   ),
                 ),
@@ -1293,15 +1208,17 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                         children: [
                           CircleAvatar(
                             radius: 20,
-                            backgroundColor: (acc['badgeColor'] as Color? ?? BaustColors.primaryNavy).withValues(alpha: 0.12),
+                            backgroundColor: (acc['badgeColor'] as Color? ?? BaustColors.primaryNavy).withValues(
+                              alpha: 0.12,
+                            ),
                             child: Icon(
                               isSuperAdmin
                                   ? Icons.shield
                                   : isDoctor
-                                      ? Icons.local_hospital
-                                      : isStudent
-                                          ? Icons.school
-                                          : Icons.medication,
+                                  ? Icons.local_hospital
+                                  : isStudent
+                                  ? Icons.school
+                                  : Icons.medication,
                               color: acc['badgeColor'] as Color? ?? BaustColors.primaryNavy,
                               size: 20,
                             ),
@@ -1325,7 +1242,9 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: (acc['badgeColor'] as Color? ?? BaustColors.primaryNavy).withValues(alpha: 0.1),
+                                        color: (acc['badgeColor'] as Color? ?? BaustColors.primaryNavy).withValues(
+                                          alpha: 0.1,
+                                        ),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
@@ -1374,8 +1293,8 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                                         color: isDoctor
                                             ? BaustColors.emergencyRed
                                             : isStudent
-                                                ? BaustColors.primaryArmyGreen
-                                                : BaustColors.primaryNavy,
+                                            ? BaustColors.primaryArmyGreen
+                                            : BaustColors.primaryNavy,
                                       ),
                                       const SizedBox(width: 4),
                                       Expanded(
@@ -1385,8 +1304,8 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                                             color: isDoctor
                                                 ? BaustColors.emergencyRed
                                                 : isStudent
-                                                    ? BaustColors.primaryArmyGreen
-                                                    : BaustColors.primaryNavy,
+                                                ? BaustColors.primaryArmyGreen
+                                                : BaustColors.primaryNavy,
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -1401,7 +1320,11 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                                   const SizedBox(height: 2),
                                   Text(
                                     'No email on record',
-                                    style: TextStyle(color: Colors.grey.shade500, fontSize: 11, fontStyle: FontStyle.italic),
+                                    style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 11,
+                                      fontStyle: FontStyle.italic,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -1409,7 +1332,11 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                                 if (acc['studentRoll'] != null)
                                   Text(
                                     'Student ID: ${acc['studentRoll']}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: BaustColors.primaryArmyGreen),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: BaustColors.primaryArmyGreen,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -1435,7 +1362,11 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                               const SizedBox(width: 4),
                               Text(
                                 acc['status'] ?? 'Verified',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: BaustColors.successGreen),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: BaustColors.successGreen,
+                                ),
                               ),
                             ],
                           ),
@@ -1443,7 +1374,10 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                             TextButton.icon(
                               style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                               icon: const Icon(Icons.open_in_new, size: 14, color: BaustColors.emergencyRed),
-                              label: const Text('Doctor Portal', style: TextStyle(fontSize: 11, color: BaustColors.emergencyRed)),
+                              label: const Text(
+                                'Doctor Portal',
+                                style: TextStyle(fontSize: 11, color: BaustColors.emergencyRed),
+                              ),
                               onPressed: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
@@ -1453,7 +1387,10 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                             TextButton.icon(
                               style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                               icon: const Icon(Icons.open_in_new, size: 14, color: BaustColors.primaryArmyGreen),
-                              label: const Text('Inventory', style: TextStyle(fontSize: 11, color: BaustColors.primaryArmyGreen)),
+                              label: const Text(
+                                'Inventory',
+                                style: TextStyle(fontSize: 11, color: BaustColors.primaryArmyGreen),
+                              ),
                               onPressed: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
@@ -1463,7 +1400,10 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                             TextButton.icon(
                               style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                               icon: const Icon(Icons.notification_add, size: 14, color: BaustColors.emergencyRed),
-                              label: const Text('Test SOS (Test Tool)', style: TextStyle(fontSize: 11, color: BaustColors.emergencyRed)),
+                              label: const Text(
+                                'Test SOS (Test Tool)',
+                                style: TextStyle(fontSize: 11, color: BaustColors.emergencyRed),
+                              ),
                               onPressed: _simulateStudentSos,
                             ),
                         ],
@@ -1508,12 +1448,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
-            children: [
-              'All',
-              'BAUST Medical Center',
-              'Central Administration',
-              'Academic Departments',
-            ].map((category) {
+            children: ['All', 'BAUST Medical Center', 'Central Administration', 'Academic Departments'].map((category) {
               final isSelected = _selectedFilter == category;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -1532,9 +1467,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                       ? BaustColors.emergencyRed
                       : BaustColors.primaryNavy,
                   backgroundColor: Colors.white,
-                  side: BorderSide(
-                    color: isSelected ? Colors.transparent : Colors.grey.shade300,
-                  ),
+                  side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade300),
                   onSelected: (_) => setState(() => _selectedFilter = category),
                 ),
               );
@@ -1557,9 +1490,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
               elevation: 1,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-                side: isMedical
-                    ? BorderSide(color: Colors.red.shade200, width: 1.2)
-                    : BorderSide.none,
+                side: isMedical ? BorderSide(color: Colors.red.shade200, width: 1.2) : BorderSide.none,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -1629,9 +1560,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: isMedical
-                                ? Colors.red.shade50
-                                : BaustColors.primaryNavy.withValues(alpha: 0.1),
+                            color: isMedical ? Colors.red.shade50 : BaustColors.primaryNavy.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -1688,12 +1617,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
-    required String count,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _buildStatCard({required String title, required String count, required IconData icon, required Color color}) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -1707,15 +1631,9 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(height: 8),
-            Text(
-              count,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+            Text(count, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 2),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
-            ),
+            Text(title, style: const TextStyle(fontSize: 11, color: BaustColors.textMuted)),
           ],
         ),
       ),
@@ -1729,13 +1647,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.amber.shade300, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.amber.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.amber.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1777,10 +1689,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                 return Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
                   child: const Center(
                     child: Text(
                       'No pending accounts awaiting approval.',
@@ -1793,162 +1702,156 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
               return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: stream,
                 builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
-
-              final docs = snapshot.data?.docs ?? [];
-              if (docs.isEmpty) {
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'No pending accounts awaiting approval.',
-                      style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
-                    ),
-                  ),
-                );
-              }
-
-              return ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: docs.length,
-                separatorBuilder: (context, index) => const Divider(height: 16),
-                itemBuilder: (context, index) {
-                  final doc = docs[index];
-                  final data = doc.data();
-                  final uid = doc.id;
-                  final name = data['displayName'] ?? 'Pending User';
-                  final email = data['email'] ?? 'Not found - confirm with patient';
-                  final createdAt = data['createdAt'];
-                  String createdStr = 'Not found - confirm with patient';
-                  if (createdAt is Timestamp) {
-                    final d = createdAt.toDate();
-                    createdStr = '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()),
+                    );
                   }
 
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.amber.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  final docs = snapshot.data?.docs ?? [];
+                  if (docs.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
+                      child: const Center(
+                        child: Text(
+                          'No pending accounts awaiting approval.',
+                          style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: docs.length,
+                    separatorBuilder: (context, index) => const Divider(height: 16),
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data();
+                      final uid = doc.id;
+                      final name = data['displayName'] ?? 'Pending User';
+                      final email = data['email'] ?? 'Not found - confirm with patient';
+                      final createdAt = data['createdAt'];
+                      String createdStr = 'Not found - confirm with patient';
+                      if (createdAt is Timestamp) {
+                        final d = createdAt.toDate();
+                        createdStr = '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.amber.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade800,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'Pending',
+                                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.shade800,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                'Pending',
-                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                              ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Email: $email',
+                              style: const TextStyle(fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              'Created: $createdStr',
+                              style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: BaustColors.emergencyRed,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                  icon: const Icon(Icons.medical_services_outlined, size: 14),
+                                  label: const Text('Approve as Doctor'),
+                                  onPressed: () => _updateAccountRole(uid, 'doctor', true),
+                                ),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: BaustColors.primaryArmyGreen,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                  icon: const Icon(Icons.medication_outlined, size: 14),
+                                  label: const Text('Approve as Pharmacist'),
+                                  onPressed: () => _updateAccountRole(uid, 'pharmacist', true),
+                                ),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0284C7),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                  icon: const Icon(Icons.healing_outlined, size: 14),
+                                  label: const Text('Approve as Nurse'),
+                                  onPressed: () => _updateAccountRole(uid, 'nurse', true),
+                                ),
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red.shade700,
+                                    side: BorderSide(color: Colors.red.shade300),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                  icon: const Icon(Icons.close, size: 14),
+                                  label: const Text('Reject'),
+                                  onPressed: () => _rejectAccount(uid),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Email: $email',
-                          style: const TextStyle(fontSize: 12),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          'Created: $createdStr',
-                          style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: BaustColors.emergencyRed,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                              icon: const Icon(Icons.medical_services_outlined, size: 14),
-                              label: const Text('Approve as Doctor'),
-                              onPressed: () => _updateAccountRole(uid, 'doctor', true),
-                            ),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: BaustColors.primaryArmyGreen,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                              icon: const Icon(Icons.medication_outlined, size: 14),
-                              label: const Text('Approve as Pharmacist'),
-                              onPressed: () => _updateAccountRole(uid, 'pharmacist', true),
-                            ),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0284C7),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                              icon: const Icon(Icons.healing_outlined, size: 14),
-                              label: const Text('Approve as Nurse'),
-                              onPressed: () => _updateAccountRole(uid, 'nurse', true),
-                            ),
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red.shade700,
-                                side: BorderSide(color: Colors.red.shade300),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                              icon: const Icon(Icons.close, size: 14),
-                              label: const Text('Reject'),
-                              onPressed: () => _rejectAccount(uid),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
+          ),
+        ],
       ),
-    ],
-  ),
-);
+    );
   }
 
   Future<void> _updateAccountRole(String uid, String role, bool approved) async {
@@ -1971,10 +1874,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: BaustColors.emergencyRed,
-            content: Text('Failed to update account: $e'),
-          ),
+          SnackBar(backgroundColor: BaustColors.emergencyRed, content: Text('Failed to update account: $e')),
         );
       }
     }
@@ -1989,20 +1889,13 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
       }, SetOptions(merge: true));
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.orange,
-            content: Text('Account rejected.'),
-          ),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(backgroundColor: Colors.orange, content: Text('Account rejected.')));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: BaustColors.emergencyRed,
-            content: Text('Failed to reject account: $e'),
-          ),
+          SnackBar(backgroundColor: BaustColors.emergencyRed, content: Text('Failed to reject account: $e')),
         );
       }
     }
@@ -2016,11 +1909,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: BaustColors.primaryNavy.withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
-          BoxShadow(
-            color: BaustColors.primaryNavy.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: BaustColors.primaryNavy.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -2063,10 +1952,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                 return Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
                   child: const Center(
                     child: Text(
                       'No access logs recorded yet.',
@@ -2081,10 +1967,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(),
-                      ),
+                      child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()),
                     );
                   }
 
@@ -2093,10 +1976,7 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
                       child: const Center(
                         child: Text(
                           'No access logs recorded yet.',
@@ -2106,60 +1986,59 @@ class _SuperAdminDashboardState extends ConsumerState<SuperAdminDashboard> {
                     );
                   }
 
-              return ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: docs.length,
-                separatorBuilder: (context, index) => const Divider(height: 12),
-                itemBuilder: (context, index) {
-                  final data = docs[index].data();
-                  final doctorName = data['doctorName'] ?? 'Doctor (${data['doctorUid'] ?? "Unknown"})';
-                  final studentId = data['studentId'] ?? 'Student (${data['studentUid'] ?? "Unknown"})';
-                  final action = data['action'] ?? 'view_history';
-                  final createdAt = data['createdAt'];
-                  String timeStr = 'Not found - confirm with patient';
-                  if (createdAt is Timestamp) {
-                    final d = createdAt.toDate();
-                    timeStr = '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
-                  }
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: docs.length,
+                    separatorBuilder: (context, index) => const Divider(height: 12),
+                    itemBuilder: (context, index) {
+                      final data = docs[index].data();
+                      final doctorName = data['doctorName'] ?? 'Doctor (${data['doctorUid'] ?? "Unknown"})';
+                      final studentId = data['studentId'] ?? 'Student (${data['studentUid'] ?? "Unknown"})';
+                      final action = data['action'] ?? 'view_history';
+                      final createdAt = data['createdAt'];
+                      String timeStr = 'Not found - confirm with patient';
+                      if (createdAt is Timestamp) {
+                        final d = createdAt.toDate();
+                        timeStr = '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
+                      }
 
-                  return Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: BaustColors.primaryNavy.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.security, size: 16, color: BaustColors.primaryNavy),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '$doctorName viewed patient $studentId',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      return Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: BaustColors.primaryNavy.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
                             ),
-                            Text(
-                              'Action: $action • Timestamp: $timeStr',
-                              style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
+                            child: const Icon(Icons.security, size: 16, color: BaustColors.primaryNavy),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$doctorName viewed patient $studentId',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'Action: $action • Timestamp: $timeStr',
+                                  style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                        ],
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
+          ),
+        ],
       ),
-    ],
-  ),
-);
+    );
   }
 }
-

@@ -61,22 +61,14 @@ class AllergyConflictResult {
   final String? medicineName;
   final String? matchedFamily;
 
-  const AllergyConflictResult({
-    required this.hasConflict,
-    this.matchedAllergy,
-    this.medicineName,
-    this.matchedFamily,
-  });
+  const AllergyConflictResult({required this.hasConflict, this.matchedAllergy, this.medicineName, this.matchedFamily});
 
   static const AllergyConflictResult noConflict = AllergyConflictResult(hasConflict: false);
 }
 
 /// Checks if a given medicine name conflicts with any patient-reported known allergies.
 /// Uses substring matching and drug-family cross-reactivity mapping.
-AllergyConflictResult checkMedicineAllergyConflict(
-  String rawMedicineName,
-  List<String> rawAllergies,
-) {
+AllergyConflictResult checkMedicineAllergyConflict(String rawMedicineName, List<String> rawAllergies) {
   final med = rawMedicineName.trim().toLowerCase();
   if (med.isEmpty || rawAllergies.isEmpty) {
     return AllergyConflictResult.noConflict;
@@ -101,11 +93,9 @@ AllergyConflictResult checkMedicineAllergyConflict(
       final familyKey = entry.key;
       final familyMembers = entry.value;
 
-      final allergyBelongsToFamily = allergy.contains(familyKey) ||
-          familyMembers.any((m) => allergy.contains(m));
+      final allergyBelongsToFamily = allergy.contains(familyKey) || familyMembers.any((m) => allergy.contains(m));
 
-      final medicineBelongsToFamily = med.contains(familyKey) ||
-          familyMembers.any((m) => med.contains(m));
+      final medicineBelongsToFamily = med.contains(familyKey) || familyMembers.any((m) => med.contains(m));
 
       if (allergyBelongsToFamily && medicineBelongsToFamily) {
         return AllergyConflictResult(

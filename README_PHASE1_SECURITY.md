@@ -109,7 +109,7 @@ You can now test the complete end-to-end flow locally:
 
 Run all rules tests via:
 ```bash
-firebase emulators:exec --only firestore --project smart-medi-b25ef "npm --prefix rules_tests test"
+firebase emulators:exec --only firestore --project smart-medi-galib "npm --prefix rules_tests test"
 ```
 
 ### Real Test Output (16 Passing)
@@ -140,7 +140,7 @@ firebase emulators:exec --only firestore --project smart-medi-b25ef "npm --prefi
 ## 5. Firebase Project Environment (.firebaserc)
 
 - `.firebaserc` points to:
-  - `default`: `smart-medi-b25ef`
-  - `dev`: `smart-medi-b25ef`
-- `smart-medi-b25ef` is the **DEV / Sandbox test project**.
+  - `default`: `smart-medi-galib`
+  - `dev`: `smart-medi-galib`
+- `smart-medi-galib` is the **DEV / Sandbox test project**.
 - Production project rules deployment is deferred until formal production project confirmation.

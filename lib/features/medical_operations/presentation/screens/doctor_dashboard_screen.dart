@@ -1,11 +1,14 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../../../core/services/fcm_notification_service.dart';
 import '../../../../core/widgets/smart_medi_drawer.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
+import '../../../profile/presentation/screens/edit_profile_screen.dart';
 import '../../../blood_bank/presentation/screens/blood_donor_directory.dart';
 import '../controllers/patient_checkin_controller.dart';
 import 'patient_checkin_log_screen.dart';
@@ -55,51 +58,51 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           .orderBy('triggeredAt', descending: true)
           .snapshots()
           .listen((snapshot) {
-        final List<Map<String, dynamic>> liveAlerts = [];
-        for (final doc in snapshot.docs) {
-          final data = doc.data();
-          final status = (data['status'] ?? 'TRIGGERED').toString();
-          if (status != 'RESOLVED') {
-            final triggeredAt = data['triggeredAt'];
-            String timeDisplay = 'Just now';
-            if (triggeredAt is Timestamp) {
-              final diff = DateTime.now().difference(triggeredAt.toDate());
-              if (diff.inMinutes < 1) {
-                timeDisplay = 'Just now';
-              } else if (diff.inMinutes < 60) {
-                timeDisplay = '${diff.inMinutes} mins ago';
-              } else {
-                timeDisplay = '${diff.inHours} hours ago';
+            final List<Map<String, dynamic>> liveAlerts = [];
+            for (final doc in snapshot.docs) {
+              final data = doc.data();
+              final status = (data['status'] ?? 'TRIGGERED').toString();
+              if (status != 'RESOLVED') {
+                final triggeredAt = data['triggeredAt'];
+                String timeDisplay = 'Just now';
+                if (triggeredAt is Timestamp) {
+                  final diff = DateTime.now().difference(triggeredAt.toDate());
+                  if (diff.inMinutes < 1) {
+                    timeDisplay = 'Just now';
+                  } else if (diff.inMinutes < 60) {
+                    timeDisplay = '${diff.inMinutes} mins ago';
+                  } else {
+                    timeDisplay = '${diff.inHours} hours ago';
+                  }
+                }
+
+                liveAlerts.add({
+                  'alertId': data['alertId'] ?? doc.id,
+                  'studentName': data['studentName'] ?? 'Unknown Student',
+                  'roll': data['studentRoll'] ?? data['studentId'] ?? 'N/A',
+                  'department': data['department'] ?? 'General',
+                  'hall': data['hall'] ?? 'Campus Area',
+                  'room': data['roomNumber'] ?? 'N/A',
+                  'symptom': data['symptomCategory'] ?? 'Critical Emergency',
+                  'optionalNote': data['optionalNote'] ?? '',
+                  'criticalFlags': List<String>.from(data['criticalFlags'] ?? []),
+                  'blood': (data['criticalFlags'] != null && (data['criticalFlags'] as List).isNotEmpty)
+                      ? (data['criticalFlags'] as List).first.toString()
+                      : 'EMERGENCY',
+                  'time': timeDisplay,
+                  'status': status,
+                  'emergencyContact': data['emergencyContact'],
+                });
               }
             }
 
-            liveAlerts.add({
-              'alertId': data['alertId'] ?? doc.id,
-              'studentName': data['studentName'] ?? 'Unknown Student',
-              'roll': data['studentRoll'] ?? data['studentId'] ?? 'N/A',
-              'department': data['department'] ?? 'General',
-              'hall': data['hall'] ?? 'Campus Area',
-              'room': data['roomNumber'] ?? 'N/A',
-              'symptom': data['symptomCategory'] ?? 'Critical Emergency',
-              'optionalNote': data['optionalNote'] ?? '',
-              'criticalFlags': List<String>.from(data['criticalFlags'] ?? []),
-              'blood': (data['criticalFlags'] != null && (data['criticalFlags'] as List).isNotEmpty)
-                  ? (data['criticalFlags'] as List).first.toString()
-                  : 'EMERGENCY',
-              'time': timeDisplay,
-              'status': status,
-              'emergencyContact': data['emergencyContact'],
-            });
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            _activeEmergencyAlerts.clear();
-            _activeEmergencyAlerts.addAll(liveAlerts);
-          });
-        }
-      }, onError: (_) {});
+            if (mounted) {
+              setState(() {
+                _activeEmergencyAlerts.clear();
+                _activeEmergencyAlerts.addAll(liveAlerts);
+              });
+            }
+          }, onError: (_) {});
     } catch (_) {}
   }
 
@@ -112,10 +115,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     });
 
     try {
-      FirebaseFirestore.instance
-          .collection(FirestoreCollections.emergencyAlerts)
-          .doc(alertId)
-          .update({
+      FirebaseFirestore.instance.collection(FirestoreCollections.emergencyAlerts).doc(alertId).update({
         'status': 'AMBULANCE_DISPATCHED',
         'acknowledgedAt': FieldValue.serverTimestamp(),
       });
@@ -148,10 +148,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     });
 
     try {
-      FirebaseFirestore.instance
-          .collection(FirestoreCollections.emergencyAlerts)
-          .doc(alertId)
-          .update({
+      FirebaseFirestore.instance.collection(FirestoreCollections.emergencyAlerts).doc(alertId).update({
         'status': 'RESOLVED',
         'resolvedAt': FieldValue.serverTimestamp(),
       });
@@ -170,7 +167,9 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     final user = ref.read(authControllerProvider).userProfile;
     final staffInfo = '${user?.displayName ?? "Medical Doctor"} (${user?.designation ?? "Doctor"})';
 
-    ref.read(patientCheckInProvider.notifier).logFromEmergencyAlert(
+    ref
+        .read(patientCheckInProvider.notifier)
+        .logFromEmergencyAlert(
           studentId: alert['roll'] ?? 'N/A',
           studentName: alert['studentName'] ?? 'Unknown Student',
           symptom: alert['symptom'] ?? 'Critical Emergency',
@@ -187,11 +186,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           children: [
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Documented in Medical Center Staff Log for ${alert['studentName']}',
-              ),
-            ),
+            Expanded(child: Text('Documented in Medical Center Staff Log for ${alert['studentName']}')),
           ],
         ),
       ),
@@ -201,11 +196,11 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   void _simulateIncomingSos() {
     final newAlert = {
       'alertId': 'sos_sim_${DateTime.now().millisecondsSinceEpoch}',
-      'studentName': 'MD. Sajol Hassan',
-      'roll': '0802420205101137',
+      'studentName': 'Demo Student',
+      'roll': '0802420205109001',
       'department': 'Dept of CSE',
-      'hall': 'Shaheed Dr. Zikrul Haque Hall (SDZHH)',
-      'room': '402-B',
+      'hall': 'Abbas Uddin Ahmed Hall (AUAH)',
+      'room': '214',
       'symptom': 'Acute Chest Pain / Respiratory Distress',
       'optionalNote': 'Patient conscious in room, needs prompt medical evaluation.',
       'blood': 'B+',
@@ -218,10 +213,12 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
       _activeEmergencyAlerts.insert(0, newAlert);
     });
 
-    ref.read(fcmNotificationServiceProvider).triggerSimulatedIncomingAlert(
-          studentName: 'MD. Sajol Hassan',
-          hall: 'Shaheed Dr. Zikrul Haque Hall (SDZHH)',
-          room: '402-B',
+    ref
+        .read(fcmNotificationServiceProvider)
+        .triggerSimulatedIncomingAlert(
+          studentName: 'Demo Student',
+          hall: 'Abbas Uddin Ahmed Hall (AUAH)',
+          room: '214',
           symptom: 'Acute Chest Pain / Respiratory Distress',
         );
 
@@ -232,7 +229,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           children: [
             Icon(Icons.warning, color: Colors.white),
             SizedBox(width: 8),
-            Expanded(child: Text('HIGH-PRIORITY SOS: MD. Sajol Hassan (0802420205101137)!')),
+            Expanded(child: Text('HIGH-PRIORITY SOS: Demo Student (0802420205109001)!')),
           ],
         ),
         duration: Duration(seconds: 4),
@@ -248,9 +245,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   }) {
     final nameController = TextEditingController(text: initialName ?? '');
     final rollController = TextEditingController(text: initialRoll ?? '');
-    final diagnosisController = TextEditingController(
-      text: initialDiagnosis ?? 'Acute Clinical Exacerbation',
-    );
+    final diagnosisController = TextEditingController(text: initialDiagnosis ?? 'Acute Clinical Exacerbation');
     final noteController = TextEditingController(
       text: 'Strict bed rest advised. Exempt from laboratory work and tests.',
     );
@@ -304,11 +299,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                             color: BaustColors.primaryArmyGreen.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
-                            Icons.note_alt_outlined,
-                            color: BaustColors.primaryArmyGreen,
-                            size: 26,
-                          ),
+                          child: const Icon(Icons.note_alt_outlined, color: BaustColors.primaryArmyGreen, size: 26),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
@@ -325,18 +316,12 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                               ),
                               Text(
                                 'Official BAUST Medical Certificate Dispatch',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: BaustColors.textMuted,
-                                ),
+                                style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
                               ),
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(modalContext),
-                        ),
+                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(modalContext)),
                       ],
                     ),
 
@@ -437,11 +422,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.calendar_month,
-                            size: 18,
-                            color: BaustColors.primaryArmyGreen,
-                          ),
+                          const Icon(Icons.calendar_month, size: 18, color: BaustColors.primaryArmyGreen),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -498,13 +479,9 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                           Expanded(
                             child: Text(
                               'Automated Academic Dispatch: Submitting this leave will instantly notify '
-                              'the Head of Department (Dr. Md Nakib Hayat Chowdhury, 01769675560) '
+                              'the Head of Department '
                               'with a certified digital leave slip.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.brown.shade900,
-                                height: 1.35,
-                              ),
+                              style: TextStyle(fontSize: 11, color: Colors.brown.shade900, height: 1.35),
                             ),
                           ),
                         ],
@@ -519,17 +496,12 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                         backgroundColor: BaustColors.primaryArmyGreen,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       icon: const Icon(Icons.check_circle_outline),
                       label: const Text(
                         'GRANT & DISPATCH SICK LEAVE',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.8),
                       ),
                       onPressed: () {
                         final studentName = nameController.text.trim();
@@ -559,7 +531,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                           'endDate': '${endDate.day}/${endDate.month}/${endDate.year}',
                           'diagnosis': diagnosis,
                           'doctorNote': note,
-                          'headOfDept': 'Dr. Md Nakib Hayat Chowdhury (Head of Department, CSE - 01769675560)',
+                          'headOfDept': 'Head of Department',
                           'status': 'APPROVED & DISPATCHED',
                         };
 
@@ -645,10 +617,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(ctx),
-                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
             const Divider(height: 24),
@@ -663,7 +632,10 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                 side: BorderSide(color: Colors.grey.shade200),
               ),
               leading: const Icon(Icons.search, color: BaustColors.primaryNavy),
-              title: const Text('Search by Student ID / Roll', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              title: const Text(
+                'Search by Student ID / Roll',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
               subtitle: const Text('Lookup student records in directory', style: TextStyle(fontSize: 11)),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
@@ -687,16 +659,20 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                   ),
                   tileColor: Colors.red.shade50.withValues(alpha: 0.5),
                   leading: const Icon(Icons.emergency, color: BaustColors.emergencyRed, size: 20),
-                  title: Text(alert['studentName'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  subtitle: Text('Roll: ${alert['roll']} • ${alert['department']}', style: const TextStyle(fontSize: 11)),
+                  title: Text(
+                    alert['studentName'] ?? 'Unknown',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  subtitle: Text(
+                    'Roll: ${alert['roll']} • ${alert['department']}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: BaustColors.emergencyRed),
                   onTap: () {
                     Navigator.pop(ctx);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => PatientLookupScreen(initialQuery: alert['roll']?.toString()),
-                      ),
+                      MaterialPageRoute(builder: (_) => PatientLookupScreen(initialQuery: alert['roll']?.toString())),
                     );
                   },
                 );
@@ -753,12 +729,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                 fit: BoxFit.contain,
               ),
             ),
-            const Flexible(
-              child: Text(
-                'Doctor Portal — BAUST Medical Center',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            const Flexible(child: Text('Doctor Portal — BAUST Medical Center', overflow: TextOverflow.ellipsis)),
           ],
         ),
         actions: [
@@ -779,10 +750,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                         icon: const Icon(Icons.person_search_outlined, size: 18),
                         label: const Text('Lookup', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const PatientLookupScreen()),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientLookupScreen()));
                         },
                       ),
                     ),
@@ -796,10 +764,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                         icon: const Icon(Icons.assignment_ind_outlined, size: 18),
                         label: const Text('Check-in', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
                         },
                       ),
                     ),
@@ -813,10 +778,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                         icon: const Icon(Icons.medication_outlined, size: 18),
                         label: const Text('Pharmacy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()));
                         },
                       ),
                     ),
@@ -830,12 +792,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                         icon: const Icon(Icons.volunteer_activism_outlined, size: 18),
                         label: const Text('Blood Bank', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const BloodDonorDirectoryScreen(),
-                            ),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()));
                         },
                       ),
                     ),
@@ -854,25 +811,13 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                 ),
                 onSelected: (value) {
                   if (value == 'lookup') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PatientLookupScreen()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientLookupScreen()));
                   } else if (value == 'checkin') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
                   } else if (value == 'pharmacy') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()));
                   } else if (value == 'blood') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()));
                   }
                 },
                 itemBuilder: (context) => [
@@ -932,9 +877,48 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: tabs,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final stack = IndexedStack(index: _currentIndex, children: tabs);
+          if (constraints.maxWidth < 840) return stack;
+          final extended = constraints.maxWidth >= 1200;
+          return Row(
+            children: [
+              NavigationRail(
+                selectedIndex: _currentIndex,
+                onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
+                extended: extended,
+                labelType: extended ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                backgroundColor: Colors.white,
+                indicatorColor: BaustColors.primaryArmyGreen.withValues(alpha: 0.14),
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.emergency_outlined),
+                    selectedIcon: Icon(Icons.emergency),
+                    label: Text('SOS & Queue'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.person_search_outlined),
+                    selectedIcon: Icon(Icons.person_search),
+                    label: Text('Student Directory'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.medication_outlined),
+                    selectedIcon: Icon(Icons.medication),
+                    label: Text('Pharmacy'),
+                  ),
+                ],
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1200), child: stack),
+                ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'doctor_fab_scan',
@@ -942,39 +926,38 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 4,
         icon: const Icon(Icons.document_scanner_outlined),
-        label: const Text(
-          'Scan Prescription',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        label: const Text('Scan Prescription', style: TextStyle(fontWeight: FontWeight.bold)),
         tooltip: 'Scan Paper Prescription',
         onPressed: _showQuickPrescriptionPicker,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
-        indicatorColor: _currentIndex == 0
-            ? Colors.red.shade100
-            : BaustColors.primaryArmyGreen.withValues(alpha: 0.15),
-        backgroundColor: Colors.white,
-        elevation: 8,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.emergency_outlined),
-            selectedIcon: Icon(Icons.emergency, color: BaustColors.emergencyRed),
-            label: 'SOS & Queue',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_search_outlined),
-            selectedIcon: Icon(Icons.person_search, color: BaustColors.primaryArmyGreen),
-            label: 'Student Directory',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.medication_outlined),
-            selectedIcon: Icon(Icons.medication, color: BaustColors.primaryArmyGreen),
-            label: 'Pharmacy',
-          ),
-        ],
-      ),
+      bottomNavigationBar: MediaQuery.sizeOf(context).width >= 840
+          ? null
+          : NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
+              indicatorColor: _currentIndex == 0
+                  ? Colors.red.shade100
+                  : BaustColors.primaryArmyGreen.withValues(alpha: 0.15),
+              backgroundColor: Colors.white,
+              elevation: 8,
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.emergency_outlined),
+                  selectedIcon: Icon(Icons.emergency, color: BaustColors.emergencyRed),
+                  label: 'SOS & Queue',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_search_outlined),
+                  selectedIcon: Icon(Icons.person_search, color: BaustColors.primaryArmyGreen),
+                  label: 'Student Directory',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.medication_outlined),
+                  selectedIcon: Icon(Icons.medication, color: BaustColors.primaryArmyGreen),
+                  label: 'Pharmacy',
+                ),
+              ],
+            ),
     );
   }
 
@@ -1040,10 +1023,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PatientLookupScreen()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientLookupScreen()));
             },
           ),
         ),
@@ -1060,10 +1040,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Icons.note_alt, size: 18),
-                label: const Text(
-                  'Grant Sick Leave',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
+                label: const Text('Grant Sick Leave', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 onPressed: () => _showGrantSickLeaveSheet(),
               ),
             ),
@@ -1078,15 +1055,9 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Icons.assignment_ind, size: 18),
-                label: const Text(
-                  'Patient Check-In Log',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
+                label: const Text('Patient Check-In Log', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
                 },
               ),
             ),
@@ -1105,15 +1076,9 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Icons.medication_outlined, size: 18),
-                label: const Text(
-                  'Pharmacy Inventory',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                ),
+                label: const Text('Pharmacy Inventory', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PharmacistInventoryScreen()));
                 },
               ),
             ),
@@ -1128,17 +1093,9 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Icons.volunteer_activism, size: 18),
-                label: const Text(
-                  'Smart Blood Bank',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                ),
+                label: const Text('Smart Blood Bank', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const BloodDonorDirectoryScreen(),
-                    ),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const BloodDonorDirectoryScreen()));
                 },
               ),
             ),
@@ -1174,10 +1131,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
             ),
             TextButton.icon(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
               },
               icon: const Icon(Icons.open_in_new, size: 14),
               label: const Text('View All Logs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
@@ -1209,22 +1163,23 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                 )
               else
                 ...checkIns.take(3).map((item) {
-                  final isEmergency = item.purpose.toLowerCase().contains('emergency') || item.purpose.toLowerCase().contains('sos');
+                  final isEmergency =
+                      item.purpose.toLowerCase().contains('emergency') || item.purpose.toLowerCase().contains('sos');
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: isEmergency ? Colors.red.shade50 : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isEmergency ? Colors.red.shade200 : Colors.grey.shade200,
-                      ),
+                      border: Border.all(color: isEmergency ? Colors.red.shade200 : Colors.grey.shade200),
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 16,
-                          backgroundColor: isEmergency ? Colors.red.shade100 : BaustColors.primaryArmyGreen.withValues(alpha: 0.1),
+                          backgroundColor: isEmergency
+                              ? Colors.red.shade100
+                              : BaustColors.primaryArmyGreen.withValues(alpha: 0.1),
                           child: Icon(
                             isEmergency ? Icons.warning_amber_rounded : Icons.person,
                             size: 16,
@@ -1280,12 +1235,12 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: const Icon(Icons.add, size: 16),
-                  label: const Text('+ Record New Check-In Entry', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    '+ Record New Check-In Entry',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientCheckInLogScreen()));
                   },
                 ),
               ),
@@ -1316,10 +1271,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  user?.displayName ?? 'Doctor',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-                ),
+                Text(user?.displayName ?? 'Doctor', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                 const SizedBox(height: 2),
                 Builder(
                   builder: (context) {
@@ -1328,13 +1280,8 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                     final designation = (rawDesig != null && rawDesig.isNotEmpty)
                         ? rawDesig
                         : 'Senior Medical Officer, BAUST Medical Center';
-                    final subtitle = (reg != null && reg.isNotEmpty)
-                        ? 'BMDC Reg: $reg • $designation'
-                        : designation;
-                    return Text(
-                      subtitle,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    );
+                    final subtitle = (reg != null && reg.isNotEmpty) ? 'BMDC Reg: $reg • $designation' : designation;
+                    return Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600));
                   },
                 ),
                 const SizedBox(height: 4),
@@ -1343,10 +1290,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(_currentStatus),
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: BoxDecoration(color: _getStatusColor(_currentStatus), shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -1361,6 +1305,11 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                 ),
               ],
             ),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Edit Profile',
+            icon: const Icon(Icons.edit_rounded),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())),
           ),
         ],
       ),
@@ -1380,19 +1329,11 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
         children: [
           const Text(
             'DUTY AVAILABILITY TOGGLE',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-              color: BaustColors.textMuted,
-            ),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1, color: BaustColors.textMuted),
           ),
           const SizedBox(height: 10),
           SegmentedButton<DoctorStatus>(
-            style: ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
+            style: ButtonStyle(visualDensity: VisualDensity.compact, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
             segments: const [
               ButtonSegment(
                 value: DoctorStatus.available,
@@ -1452,10 +1393,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
             if (alertCount > 0)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: BaustColors.emergencyRed,
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                decoration: BoxDecoration(color: BaustColors.emergencyRed, borderRadius: BorderRadius.circular(10)),
                 child: const Text(
                   'HIGH PRIORITY',
                   style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
@@ -1528,16 +1466,10 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                          decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
                           child: Text(
                             alert['blood'],
-                            style: const TextStyle(
-                              color: BaustColors.emergencyRed,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(color: BaustColors.emergencyRed, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
@@ -1551,11 +1483,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Emergency Note: ${alert['optionalNote']}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontStyle: FontStyle.italic,
-                          color: Colors.red.shade900,
-                        ),
+                        style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.red.shade900),
                       ),
                     ],
                     if (alert['emergencyContact'] != null && alert['emergencyContact'] is Map) ...[
@@ -1578,11 +1506,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                           backgroundColor: Colors.amber.shade100,
                           label: Text(
                             flag.toString(),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.brown.shade900,
-                            ),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.brown.shade900),
                           ),
                         );
                       }).toList(),
@@ -1593,8 +1517,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                         Expanded(
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  isDispatched ? BaustColors.successGreen : BaustColors.emergencyRed,
+                              backgroundColor: isDispatched ? BaustColors.successGreen : BaustColors.emergencyRed,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
@@ -1696,9 +1619,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                   ),
                 ),
                 Text(
-                  _currentTokenNumber > 0
-                      ? '$_waitingQueueCount in waiting queue'
-                      : 'Queue not started',
+                  _currentTokenNumber > 0 ? '$_waitingQueueCount in waiting queue' : 'Queue not started',
                   style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
                 ),
                 const SizedBox(height: 12),
@@ -1715,7 +1636,10 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                       if (_waitingQueueCount > 0) _waitingQueueCount--;
                     });
                   },
-                  child: Text(_currentTokenNumber > 0 ? 'Next Token' : 'Start Queue', style: const TextStyle(fontSize: 12)),
+                  child: Text(
+                    _currentTokenNumber > 0 ? 'Next Token' : 'Start Queue',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -1741,15 +1665,9 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.textMuted),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  '• Morning Shift:\n  08:00 AM - 02:00 PM',
-                  style: TextStyle(fontSize: 11, height: 1.3),
-                ),
+                Text('• Morning Shift:\n  08:00 AM - 02:00 PM', style: TextStyle(fontSize: 11, height: 1.3)),
                 SizedBox(height: 6),
-                Text(
-                  '• Evening Shift:\n  05:00 PM - 08:00 PM',
-                  style: TextStyle(fontSize: 11, height: 1.3),
-                ),
+                Text('• Evening Shift:\n  05:00 PM - 08:00 PM', style: TextStyle(fontSize: 11, height: 1.3)),
                 SizedBox(height: 6),
                 Text(
                   '• Emergency Coverage:\n  24/7 on Campus Call',
@@ -1793,18 +1711,11 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                 ],
               ),
               TextButton.icon(
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                ),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: EdgeInsets.zero),
                 icon: const Icon(Icons.add, size: 16, color: BaustColors.primaryArmyGreen),
                 label: const Text(
                   'Issue Leave',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: BaustColors.primaryArmyGreen,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: BaustColors.primaryArmyGreen),
                 ),
                 onPressed: () => _showGrantSickLeaveSheet(),
               ),
@@ -1812,10 +1723,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           ),
           const SizedBox(height: 10),
           if (_grantedSickLeaves.isEmpty)
-            const Text(
-              'No sick leaves issued yet.',
-              style: TextStyle(fontSize: 12, color: BaustColors.textMuted),
-            )
+            const Text('No sick leaves issued yet.', style: TextStyle(fontSize: 12, color: BaustColors.textMuted))
           else
             ..._grantedSickLeaves.map((leave) {
               return Container(
@@ -1870,19 +1778,13 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                     ),
                     if (leave['doctorNote'] != null && leave['doctorNote'].toString().isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text(
-                        'Note: ${leave['doctorNote']}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-                      ),
+                      Text('Note: ${leave['doctorNote']}', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
                     ],
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
+                      decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(6)),
                       child: const Row(
                         children: [
                           Icon(Icons.check_circle, size: 12, color: BaustColors.successGreen),

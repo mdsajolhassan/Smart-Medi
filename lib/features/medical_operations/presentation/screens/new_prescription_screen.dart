@@ -2,11 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../../../../core/constants/drug_allergy_map.dart';
+import '../../../../core/widgets/document_scan_widgets.dart';
 import '../../../auth_rbac/presentation/controllers/auth_controller.dart';
 import '../../data/models/prescription_model.dart';
 import '../../../medical_onboarding_ai/data/services/gemini_ai_service.dart';
+import '../../../../core/widgets/responsive.dart';
 
 class MedicineRowData {
   final TextEditingController nameController = TextEditingController();
@@ -79,6 +82,10 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
 
   bool _isFollowUpAiExtracted = false;
 
+  /// Summary of the last successful scan, shown on the scan card.
+  int? _lastScanMedicineCount;
+  String? _lastScanFileName;
+
   final List<MedicineRowData> _medicineRows = [];
 
   @override
@@ -136,10 +143,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
         row.isNameAiExtracted = false;
         if (mounted) setState(() {});
       }
-      final conflict = checkMedicineAllergyConflict(
-        row.nameController.text,
-        widget.knownAllergies,
-      );
+      final conflict = checkMedicineAllergyConflict(row.nameController.text, widget.knownAllergies);
       if (row.conflictResult.hasConflict != conflict.hasConflict ||
           row.conflictResult.matchedAllergy != conflict.matchedAllergy) {
         if (mounted) {
@@ -187,9 +191,8 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
 
   void _addMedicineRow() {
     if (_medicineRows.length >= 20) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 20 medicines allowed per prescription.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Maximum 20 medicines allowed per prescription.')));
       return;
     }
 
@@ -201,20 +204,20 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
 
   void _removeMedicineRow(int index) {
     if (_medicineRows.length <= 1) return;
-    setState(() {
-      final removed = _medicineRows.removeAt(index);
-      removed.dispose();
-    });
+    final removed = _medicineRows[index];
+    setState(() => _medicineRows.removeAt(index));
+    WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
   }
 
   Future<void> _pickFollowUpDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedFollowUpDate ?? now.add(const Duration(days: 5)),
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-    );
+    final today = DateTime(now.year, now.month, now.day);
+    final lastDate = today.add(const Duration(days: 365));
+    var initial = _selectedFollowUpDate ?? today.add(const Duration(days: 5));
+    // An AI-extracted follow-up date can be in the past or far future; clamp it so the picker doesn't assert.
+    if (initial.isBefore(today)) initial = today;
+    if (initial.isAfter(lastDate)) initial = lastDate;
+    final picked = await showDatePicker(context: context, initialDate: initial, firstDate: today, lastDate: lastDate);
     if (picked != null) {
       setState(() {
         _selectedFollowUpDate = picked;
@@ -224,10 +227,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
   }
 
   List<AllergyConflictResult> get _activeConflicts {
-    return _medicineRows
-        .map((r) => r.conflictResult)
-        .where((c) => c.hasConflict)
-        .toList();
+    return _medicineRows.map((r) => r.conflictResult).where((c) => c.hasConflict).toList();
   }
 
   static bool isPatientNameMatch(String currentName, String? extractedName) {
@@ -262,20 +262,12 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
       if (widget.onPickFileOverride != null) {
         pickedFile = await widget.onPickFileOverride!();
       } else {
-        final result = await FilePicker.platform.pickFiles(
-          type: FileType.custom,
-          allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-          withData: true,
-        );
-        if (result != null && result.files.isNotEmpty) {
-          pickedFile = result.files.first;
-        }
+        pickedFile = await pickMedicalDocument(context, title: 'Scan paper prescription');
       }
 
       if (pickedFile == null) return;
 
-      const maxBytes = 5 * 1024 * 1024; // 5 MB
-      if (pickedFile.size > maxBytes) {
+      if (pickedFile.size > kMaxScanBytes) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -307,7 +299,8 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
       if (!mounted) return;
 
       // 1. Classification & Non-prescription rejection check
-      final bool isPrescription = result.isMedicalDocument &&
+      final bool isPrescription =
+          result.isMedicalDocument &&
           (result.documentType == 'prescription' || result.documentType == 'clinical_record');
 
       if (!result.isMedicalDocument || !isPrescription) {
@@ -381,10 +374,14 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
         }
       }
 
-      // 7. Map Medicines
-      for (final r in _medicineRows) {
-        r.dispose();
-      }
+      // 7. Map Medicines (dispose old controllers after the next frame, once
+      // the fields that reference them have been rebuilt away)
+      final oldRows = List<MedicineRowData>.of(_medicineRows);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        for (final r in oldRows) {
+          r.dispose();
+        }
+      });
       _medicineRows.clear();
 
       if (result.currentMedications.isNotEmpty) {
@@ -394,7 +391,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
             dose: med.dose,
             frequency: med.frequency,
             duration: med.durationText ?? '',
-            instructions: med.toMap()['instructions']?.toString() ?? '',
+            instructions: med.instructions ?? '',
             isAi: true,
           );
           _medicineRows.add(row);
@@ -403,7 +400,10 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
         _medicineRows.add(_createMedicineRow());
       }
 
-      setState(() {});
+      setState(() {
+        _lastScanMedicineCount = result.currentMedications.length.clamp(0, 20);
+        _lastScanFileName = pickedFile!.name;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -440,9 +440,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
     }
 
     if (_medicineRows.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('At least one medicine is required.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('At least one medicine is required.')));
       return;
     }
 
@@ -476,7 +474,9 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
                     const SizedBox(height: 4),
                     Text('Diagnosis: ${_diagnosisController.text.trim()}'),
                     Text('Medications: ${_medicineRows.length} item(s)'),
-                    Text('Source: ${_prescriptionSource == 'scan' ? 'Digitized from paper scan' : 'Digital direct issue'}'),
+                    Text(
+                      'Source: ${_prescriptionSource == 'scan' ? 'Digitized from paper scan' : 'Digital direct issue'}',
+                    ),
                     const SizedBox(height: 12),
 
                     if (conflicts.isNotEmpty) ...[
@@ -548,10 +548,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
                 ),
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx, false),
-                  child: const Text('Cancel'),
-                ),
+                TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: canConfirm ? BaustColors.primaryArmyGreen : Colors.grey,
@@ -583,9 +580,7 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
           dose: r.doseController.text.trim(),
           frequency: r.frequencyController.text.trim(),
           duration: r.durationController.text.trim(),
-          instructions: r.instructionsController.text.trim().isNotEmpty
-              ? r.instructionsController.text.trim()
-              : null,
+          instructions: r.instructionsController.text.trim().isNotEmpty ? r.instructionsController.text.trim() : null,
         );
       }).toList();
 
@@ -627,20 +622,14 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: BaustColors.successGreen,
-            content: Text('Prescription issued successfully!'),
-          ),
+          const SnackBar(backgroundColor: BaustColors.successGreen, content: Text('Prescription issued successfully!')),
         );
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: BaustColors.emergencyRed,
-            content: Text('Failed to issue prescription: $e'),
-          ),
+          SnackBar(backgroundColor: BaustColors.emergencyRed, content: Text('Failed to issue prescription: $e')),
         );
       }
     } finally {
@@ -650,29 +639,111 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
     }
   }
 
-  Widget _buildAiBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFF93C5FD)),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.auto_awesome, size: 10, color: Color(0xFF1D4ED8)),
-          SizedBox(width: 3),
-          Text(
-            'AI-extracted - verify',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1D4ED8),
+  Widget _buildAiBadge() => const AiPill(label: 'AI-extracted - verify');
+
+  Widget _buildScanCard() {
+    final scanned = _lastScanMedicineCount != null;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: _isScanning
+          ? const AiScanProgress(compact: true)
+          : Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [BaustColors.armyGreenDark, BaustColors.armyGreenLight],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: BaustColors.primaryArmyGreen.withValues(alpha: 0.25),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.document_scanner_rounded, color: Colors.white, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Digitize a paper prescription',
+                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'AI reads handwriting and fills the form for you to verify.',
+                              style: TextStyle(color: Color(0xDDFFFFFF), fontSize: 12.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (scanned) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: Color(0xFF86EFAC), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '$_lastScanMedicineCount medicine${_lastScanMedicineCount == 1 ? '' : 's'} found'
+                              '${GeminiAiService.lastProviderUsed != null && widget.onScanOverride == null ? ' • via ${GeminiAiService.lastProviderUsed}' : ''}'
+                              '${_lastScanFileName != null ? ' • $_lastScanFileName' : ''}',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: BaustColors.armyGreenDark,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: Icon(scanned ? Icons.refresh_rounded : Icons.photo_camera_rounded, size: 20),
+                      label: Text(
+                        scanned ? 'Rescan Prescription' : 'Scan Paper Prescription',
+                        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
+                      ),
+                      onPressed: _isSubmitting ? null : _handleScanPrescription,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -686,120 +757,119 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
         foregroundColor: BaustColors.primaryNavy,
         elevation: 0.5,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ==========================================
-              // PATIENT HEADER CARD
-              // ==========================================
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: BaustColors.primaryNavy.withValues(alpha: 0.1),
-                          child: const Icon(Icons.person, color: BaustColors.primaryNavy),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.studentName,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: BaustColors.primaryNavy,
+      body: ResponsiveCenter(
+        maxWidth: 860,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ==========================================
+                // PATIENT HEADER CARD
+                // ==========================================
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: BaustColors.primaryNavy.withValues(alpha: 0.1),
+                            child: const Icon(Icons.person, color: BaustColors.primaryNavy),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.studentName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: BaustColors.primaryNavy,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Student ID: ${widget.studentId}',
-                                style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
-                              ),
-                              if (widget.studentDepartment != null) ...[
                                 const SizedBox(height: 2),
                                 Text(
-                                  widget.studentDepartment!,
-                                  style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
+                                  'Student ID: ${widget.studentId}',
+                                  style: const TextStyle(fontSize: 12, color: BaustColors.textMuted),
                                 ),
+                                if (widget.studentDepartment != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.studentDepartment!,
+                                    style: const TextStyle(fontSize: 11, color: BaustColors.textMuted),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.amber.shade300),
+                            ),
+                            child: Text(
+                              widget.studentBloodGroup != null
+                                  ? '${widget.studentBloodGroup} • Unverified'
+                                  : 'Blood Group: Unverified',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Allergy Status / Amber Note
+                      if (widget.knownAllergies.isEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.amber.shade50,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.amber.shade300),
                           ),
-                          child: Text(
-                            widget.studentBloodGroup != null
-                                ? '${widget.studentBloodGroup} • Unverified'
-                                : 'Blood Group: Unverified',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber.shade900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Allergy Status / Amber Note
-                    if (widget.knownAllergies.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.amber.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline, size: 16, color: Colors.amber.shade900),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Text(
-                                'No allergy information on file - confirm with patient.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF78350F),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 16, color: Colors.amber.shade900),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'No allergy information on file - confirm with patient.',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78350F)),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          const Text(
-                            'Reported Allergies:',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: BaustColors.emergencyRed),
+                            ],
                           ),
-                          ...widget.knownAllergies.map((a) => Container(
+                        )
+                      else
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            const Text(
+                              'Reported Allergies:',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: BaustColors.emergencyRed,
+                              ),
+                            ),
+                            ...widget.knownAllergies.map(
+                              (a) => Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Colors.red.shade50,
@@ -808,300 +878,257 @@ class _NewPrescriptionScreenState extends ConsumerState<NewPrescriptionScreen> {
                                 ),
                                 child: Text(
                                   a,
-                                  style: const TextStyle(fontSize: 10, color: BaustColors.emergencyRed, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: BaustColors.emergencyRed,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              )),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-
-              // ==========================================
-              // PATIENT NAME WARNING BANNER (SCAN)
-              // ==========================================
-              if (_nameWarningType == 'mismatch') ...[
-                Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: BaustColors.emergencyRed, width: 1.5),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.error_outline, color: BaustColors.emergencyRed, size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Name on document does not match this patient - verify before issuing.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: BaustColors.emergencyRed,
                               ),
                             ),
-                            if (_extractedPatientName != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Document Name: $_extractedPatientName • Current Patient: ${widget.studentName}',
-                                style: const TextStyle(fontSize: 11, color: Color(0xFF991B1B)),
-                              ),
-                            ],
                           ],
                         ),
-                      ),
                     ],
                   ),
                 ),
-              ] else if (_nameWarningType == 'not_found') ...[
-                Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.amber.shade400),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Color(0xFF78350F), size: 18),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'No patient name found on document.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF78350F),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
 
-              const SizedBox(height: 14),
-
-              // ==========================================
-              // SCAN PAPER PRESCRIPTION BUTTON
-              // ==========================================
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  side: const BorderSide(color: BaustColors.primaryArmyGreen, width: 1.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  backgroundColor: Colors.white,
-                  foregroundColor: BaustColors.primaryArmyGreen,
-                ),
-                icon: _isScanning
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: BaustColors.primaryArmyGreen,
-                        ),
-                      )
-                    : const Icon(Icons.document_scanner_outlined, size: 20),
-                label: Text(
-                  _isScanning ? 'Analyzing Paper Prescription with Gemini AI...' : 'Scan Paper Prescription',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-                onPressed: _isScanning ? null : _handleScanPrescription,
-              ),
-
-              if (_isScanning) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: const Row(
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: BaustColors.primaryNavy),
-                      ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Processing handwritten / printed prescription in memory via Gemini AI...',
-                          style: TextStyle(fontSize: 12, color: BaustColors.primaryNavy, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 18),
-
-              // ==========================================
-              // DIAGNOSIS FIELD (REQUIRED)
-              // ==========================================
-              Row(
-                children: [
-                  const Text('Clinical Diagnosis *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: BaustColors.textDark)),
-                  const SizedBox(width: 8),
-                  if (_isDiagnosisAiExtracted) _buildAiBadge(),
-                ],
-              ),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _diagnosisController,
-                decoration: InputDecoration(
-                  hintText: 'e.g., Acute Pharyngitis, Viral Fever, Gastritis',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Diagnosis is required';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              // ==========================================
-              // MEDICINES SECTION (1..20)
-              // ==========================================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Prescribed Medicines',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: BaustColors.textDark),
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.add_circle_outline, size: 18),
-                    label: const Text('Add Medicine'),
-                    onPressed: _medicineRows.length < 20 ? _addMedicineRow : null,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-
-              for (int i = 0; i < _medicineRows.length; i++) ...[
-                _buildMedicineCard(i, _medicineRows[i]),
-                const SizedBox(height: 12),
-              ],
-
-              const SizedBox(height: 12),
-
-              // ==========================================
-              // ADVICE (OPTIONAL)
-              // ==========================================
-              Row(
-                children: [
-                  const Text('Advice / Instructions (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: BaustColors.textDark)),
-                  const SizedBox(width: 8),
-                  if (_isAdviceAiExtracted) _buildAiBadge(),
-                ],
-              ),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _adviceController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  hintText: 'e.g. Complete the full antibiotic course. Drink plenty of water.',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // ==========================================
-              // FOLLOW-UP DATE (OPTIONAL)
-              // ==========================================
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+                // ==========================================
+                // PATIENT NAME WARNING BANNER (SCAN)
+                // ==========================================
+                if (_nameWarningType == 'mismatch') ...[
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: BaustColors.emergencyRed, width: 1.5),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.calendar_month, color: BaustColors.primaryArmyGreen, size: 20),
+                        const Icon(Icons.error_outline, color: BaustColors.emergencyRed, size: 22),
                         const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text(
-                                  'Follow-up Consultation',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Name on document does not match this patient - verify before issuing.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: BaustColors.emergencyRed,
                                 ),
-                                const SizedBox(width: 6),
-                                if (_isFollowUpAiExtracted) _buildAiBadge(),
+                              ),
+                              if (_extractedPatientName != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Document Name: $_extractedPatientName • Current Patient: ${widget.studentName}',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF991B1B)),
+                                ),
                               ],
-                            ),
-                            Text(
-                              _selectedFollowUpDate != null
-                                  ? '${_selectedFollowUpDate!.day}/${_selectedFollowUpDate!.month}/${_selectedFollowUpDate!.year}'
-                                  : 'Not scheduled',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    TextButton(
-                      onPressed: _pickFollowUpDate,
-                      child: Text(_selectedFollowUpDate != null ? 'Change Date' : 'Set Date'),
+                  ),
+                ] else if (_nameWarningType == 'not_found') ...[
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.amber.shade400),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Color(0xFF78350F), size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'No patient name found on document.',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78350F)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 14),
+
+                // ==========================================
+                // SCAN PAPER PRESCRIPTION CARD
+                // ==========================================
+                _buildScanCard(),
+
+                const SizedBox(height: 18),
+
+                // ==========================================
+                // DIAGNOSIS FIELD (REQUIRED)
+                // ==========================================
+                Row(
+                  children: [
+                    const Text(
+                      'Clinical Diagnosis *',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: BaustColors.textDark),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_isDiagnosisAiExtracted) _buildAiBadge(),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _diagnosisController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g., Acute Pharyngitis, Viral Fever, Gastritis',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Diagnosis is required';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                // ==========================================
+                // MEDICINES SECTION (1..20)
+                // ==========================================
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Prescribed Medicines',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: BaustColors.textDark),
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('Add Medicine'),
+                      onPressed: _medicineRows.length < 20 ? _addMedicineRow : null,
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 6),
 
-              const SizedBox(height: 24),
+                for (int i = 0; i < _medicineRows.length; i++) ...[
+                  _buildMedicineCard(i, _medicineRows[i]),
+                  const SizedBox(height: 12),
+                ],
 
-              // ==========================================
-              // ISSUE PRESCRIPTION BUTTON
-              // ==========================================
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: BaustColors.primaryArmyGreen,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(height: 12),
+
+                // ==========================================
+                // ADVICE (OPTIONAL)
+                // ==========================================
+                Row(
+                  children: [
+                    const Text(
+                      'Advice / Instructions (Optional)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: BaustColors.textDark),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_isAdviceAiExtracted) _buildAiBadge(),
+                  ],
                 ),
-                icon: _isSubmitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_rounded),
-                label: Text(
-                  _isSubmitting ? 'Issuing Prescription...' : 'Issue Prescription',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _adviceController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Complete the full antibiotic course. Drink plenty of water.',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
-                onPressed: _isSubmitting ? null : _handleIssuePrescription,
-              ),
 
-              const SizedBox(height: 30),
-            ],
+                const SizedBox(height: 14),
+
+                // ==========================================
+                // FOLLOW-UP DATE (OPTIONAL)
+                // ==========================================
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_month, color: BaustColors.primaryArmyGreen, size: 20),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Follow-up Consultation',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  if (_isFollowUpAiExtracted) _buildAiBadge(),
+                                ],
+                              ),
+                              Text(
+                                _selectedFollowUpDate != null
+                                    ? '${_selectedFollowUpDate!.day}/${_selectedFollowUpDate!.month}/${_selectedFollowUpDate!.year}'
+                                    : 'Not scheduled',
+                                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      TextButton(
+                        onPressed: _pickFollowUpDate,
+                        child: Text(_selectedFollowUpDate != null ? 'Change Date' : 'Set Date'),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ==========================================
+                // ISSUE PRESCRIPTION BUTTON
+                // ==========================================
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BaustColors.primaryArmyGreen,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_rounded),
+                  label: Text(
+                    _isSubmitting ? 'Issuing Prescription...' : 'Issue Prescription',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: _isSubmitting ? null : _handleIssuePrescription,
+                ),
+
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
       ),

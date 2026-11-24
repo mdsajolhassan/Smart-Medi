@@ -46,6 +46,14 @@ class UserProfile {
   final bool bloodGroupVerified;
   final String? bmdcRegistrationNumber;
 
+  /// Student ID-card verification: 'not_submitted' | 'pending' | 'verified' | 'rejected'.
+  /// null = legacy account created before ID verification existed.
+  final String? idVerificationStatus;
+  final String? idReviewNote;
+
+  /// 'active' | 'removed'. Removed accounts are blocked from the app (soft delete).
+  final String accountStatus;
+
   const UserProfile({
     required this.uid,
     required this.email,
@@ -75,13 +83,45 @@ class UserProfile {
     this.bloodGroupSource,
     this.bloodGroupVerified = false,
     this.bmdcRegistrationNumber,
+    this.idVerificationStatus,
+    this.idReviewNote,
+    this.accountStatus = 'active',
   });
+
+  /// The four application roles.
+  static const List<String> appRoles = ['student', 'doctor', 'admin', 'superadmin'];
+
+  /// Legacy clinical roles are treated as doctors.
+  static const Set<String> _legacyClinicalRoles = {'medical_officer', 'medical_assistant', 'nurse', 'pharmacist'};
+
+  /// Role collapsed into one of [appRoles] (unknown legacy roles are returned unchanged).
+  String get appRole {
+    if (isSuperAdmin) return 'superadmin';
+    if (_legacyClinicalRoles.contains(role)) return 'doctor';
+    return role;
+  }
+
+  bool get isRemoved => accountStatus == 'removed';
+
+  /// New students stay inactive until an admin approves their student ID card.
+  /// Legacy students (no status recorded) who already finished onboarding stay active.
+  bool get needsIdVerification {
+    if (role != 'student' || isSuperAdmin) return false;
+    if (idVerificationStatus == 'verified') return false;
+    if (idVerificationStatus == null && onboardingStatus == 'COMPLETED') return false;
+    return true;
+  }
+
+  bool get isIdVerified =>
+      idVerificationStatus == 'verified' || (idVerificationStatus == null && onboardingStatus == 'COMPLETED');
 
   bool get isSuperAdmin =>
       role == 'superadmin' ||
-      role == 'admin' ||
       accessLevel == 'SuperAdmin' ||
       AuthConfig.isSuperAdminEmail(email);
+
+  /// Admins manage accounts; super admins are admins too.
+  bool get isAdmin => role == 'admin' || isSuperAdmin;
 
   bool get isResidential => residencyStatus != 'non_residential';
 
@@ -169,6 +209,9 @@ class UserProfile {
               data['bmdcRegNumber'] ??
               data['registrationNumber'])
           ?.toString(),
+      idVerificationStatus: data['idVerificationStatus'] as String?,
+      idReviewNote: data['idReviewNote'] as String?,
+      accountStatus: data['accountStatus'] as String? ?? 'active',
     );
   }
 
@@ -201,6 +244,9 @@ class UserProfile {
     String? bloodGroupSource,
     bool? bloodGroupVerified,
     String? bmdcRegistrationNumber,
+    String? idVerificationStatus,
+    String? idReviewNote,
+    String? accountStatus,
   }) {
     return UserProfile(
       uid: uid ?? this.uid,
@@ -234,6 +280,9 @@ class UserProfile {
       bloodGroupVerified: bloodGroupVerified ?? this.bloodGroupVerified,
       bmdcRegistrationNumber:
           bmdcRegistrationNumber ?? this.bmdcRegistrationNumber,
+      idVerificationStatus: idVerificationStatus ?? this.idVerificationStatus,
+      idReviewNote: idReviewNote ?? this.idReviewNote,
+      accountStatus: accountStatus ?? this.accountStatus,
     );
   }
 }
@@ -432,7 +481,7 @@ class AuthNotifier extends Notifier<AuthState> {
             await firestore.collection(FirestoreCollections.users).doc(firebaseUser.uid).set({
               'uid': firebaseUser.uid,
               'email': email,
-              'displayName': firebaseUser.displayName ?? 'MD. Sajol Hasan',
+              'displayName': firebaseUser.displayName ?? 'Super Admin',
               'role': 'superadmin',
               'emailType': 'superadmin',
               'isSuperAdmin': true,
@@ -452,7 +501,7 @@ class AuthNotifier extends Notifier<AuthState> {
           final superAdminProfile = UserProfile(
             uid: firebaseUser.uid,
             email: email,
-            displayName: firebaseUser.displayName ?? 'MD. Sajol Hasan',
+            displayName: firebaseUser.displayName ?? 'Super Admin',
             role: 'superadmin',
             emailType: 'superadmin',
             verificationStatus: 'verified',
@@ -481,6 +530,7 @@ class AuthNotifier extends Notifier<AuthState> {
               'bloodGroupVerified': false,
               'profileCompleted': false,
               'onboardingStatus': 'PROFILE_PENDING',
+              'idVerificationStatus': 'not_submitted',
               'createdAt': FieldValue.serverTimestamp(),
             });
           } catch (e) {
@@ -508,7 +558,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final fallbackProfile = UserProfile(
         uid: firebaseUser.uid,
         email: email,
-        displayName: firebaseUser.displayName ?? (isSuperAdmin ? 'MD. Sajol Hasan' : 'BAUST Member'),
+        displayName: firebaseUser.displayName ?? (isSuperAdmin ? 'Super Admin' : 'BAUST Member'),
         role: defaultRole,
         emailType: isSuperAdmin ? 'superadmin' : AuthConfig.computeEmailType(email),
         verificationStatus: isSuperAdmin ? 'verified' : AuthConfig.computeVerificationStatus(email),
@@ -655,7 +705,7 @@ class AuthNotifier extends Notifier<AuthState> {
             await userDocRef.set({
               'uid': firebaseUser.uid,
               'email': email,
-              'displayName': firebaseUser.displayName ?? 'MD. Sajol Hasan',
+              'displayName': firebaseUser.displayName ?? 'Super Admin',
               'role': 'superadmin',
               'emailType': 'superadmin',
               'isSuperAdmin': true,
@@ -684,6 +734,7 @@ class AuthNotifier extends Notifier<AuthState> {
               'bloodGroupVerified': false,
               'profileCompleted': false,
               'onboardingStatus': 'PROFILE_PENDING',
+              'idVerificationStatus': 'not_submitted',
               'createdAt': FieldValue.serverTimestamp(),
             }).timeout(const Duration(seconds: 10));
           }
@@ -831,6 +882,7 @@ class AuthNotifier extends Notifier<AuthState> {
             'bloodGroupVerified': false,
             'profileCompleted': false,
             'onboardingStatus': 'PROFILE_PENDING',
+            'idVerificationStatus': 'not_submitted',
             'department': ?department,
             'studentRoll': ?studentRoll,
             'residentialHall': ?residentialHall,
@@ -1012,9 +1064,14 @@ class AuthNotifier extends Notifier<AuthState> {
     String? level,
     String? term,
     bool? isWillingToDonateBlood,
+    String? displayName,
+    String? designation,
+    String? bmdcRegistrationNumber,
+    String? bloodGroup,
   }) async {
     final currentProfile = state.userProfile;
     if (currentProfile == null) return;
+    final isStudent = currentProfile.role == 'student';
 
     final targetResidency = residencyStatus ?? currentProfile.residencyStatus;
     final isRes = targetResidency != 'non_residential';
@@ -1035,9 +1092,10 @@ class AuthNotifier extends Notifier<AuthState> {
     final cleanDetailedAddress = detailedAddress?.trim();
 
     final Map<String, dynamic> updateData = {
-      'residencyStatus': isRes ? 'residential' : 'non_residential',
-      'residentialHall': cleanHall,
-      'roomNumber': cleanRoom,
+      // Hall/room only apply to students; don't stamp defaults onto staff profiles.
+      if (isStudent) 'residencyStatus': isRes ? 'residential' : 'non_residential',
+      if (isStudent) 'residentialHall': cleanHall,
+      if (isStudent) 'roomNumber': cleanRoom,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (cleanDistrict != null) updateData['district'] = cleanDistrict;
@@ -1048,8 +1106,21 @@ class AuthNotifier extends Notifier<AuthState> {
     if (level != null && level.isNotEmpty) updateData['level'] = level;
     if (term != null && term.isNotEmpty) updateData['term'] = term;
     if (isWillingToDonateBlood != null) updateData['isWillingToDonateBlood'] = isWillingToDonateBlood;
-    if (currentProfile.displayName.trim().isNotEmpty) {
-      updateData['displayName'] = currentProfile.displayName.trim();
+    final cleanName = (displayName != null && displayName.trim().isNotEmpty)
+        ? displayName.trim()
+        : currentProfile.displayName.trim();
+    if (cleanName.isNotEmpty) updateData['displayName'] = cleanName;
+    final cleanDesignation = designation?.trim();
+    final cleanBmdc = bmdcRegistrationNumber?.trim();
+    // Students may self-report a blood group until the Medical Center verifies it.
+    final canSetBlood = isStudent && !currentProfile.bloodGroupVerified && bloodGroup != null && bloodGroup.isNotEmpty;
+    if (canSetBlood) {
+      updateData['bloodGroup'] = bloodGroup;
+      updateData['bloodGroupSource'] = 'self_reported';
+    }
+    if (!isStudent) {
+      if (cleanDesignation != null) updateData['designation'] = cleanDesignation;
+      if (cleanBmdc != null) updateData['bmdcRegistrationNumber'] = cleanBmdc;
     }
 
     try {
@@ -1058,18 +1129,21 @@ class AuthNotifier extends Notifier<AuthState> {
           .doc(currentProfile.uid)
           .set(updateData, SetOptions(merge: true));
 
-      await firestore
-          .collection(FirestoreCollections.students)
-          .doc(currentProfile.uid)
-          .set(updateData, SetOptions(merge: true));
+      // Only students have a students/{uid} record (rules deny it for other roles).
+      if (isStudent) {
+        await firestore
+            .collection(FirestoreCollections.students)
+            .doc(currentProfile.uid)
+            .set(updateData, SetOptions(merge: true));
+      }
 
       final willDonate = isWillingToDonateBlood ?? currentProfile.isWillingToDonateBlood;
       final donorRef = firestore.collection('blood_donors').doc(currentProfile.uid);
-      if (willDonate) {
+      if (willDonate && isStudent) {
         await donorRef.set({
           'uid': currentProfile.uid,
-          'displayName': currentProfile.displayName,
-          'bloodGroup': currentProfile.bloodGroup ?? 'Pending Verification',
+          'displayName': cleanName,
+          'bloodGroup': (canSetBlood ? bloodGroup : currentProfile.bloodGroup) ?? 'Pending Verification',
           'bloodGroupVerified': false,
           'department': department ?? currentProfile.department ?? 'General',
           'hall': cleanHall,
@@ -1080,9 +1154,9 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       final updated = currentProfile.copyWith(
-        residencyStatus: isRes ? 'residential' : 'non_residential',
-        residentialHall: cleanHall,
-        roomNumber: cleanRoom,
+        residencyStatus: isStudent ? (isRes ? 'residential' : 'non_residential') : null,
+        residentialHall: isStudent ? cleanHall : null,
+        roomNumber: isStudent ? cleanRoom : null,
         district: cleanDistrict ?? currentProfile.district,
         upazila: cleanUpazila ?? currentProfile.upazila,
         detailedAddress: cleanDetailedAddress ?? currentProfile.detailedAddress,
@@ -1091,12 +1165,75 @@ class AuthNotifier extends Notifier<AuthState> {
         level: level ?? currentProfile.level,
         term: term ?? currentProfile.term,
         isWillingToDonateBlood: willDonate,
+        displayName: cleanName.isNotEmpty ? cleanName : null,
+        designation: isStudent ? null : cleanDesignation,
+        bloodGroup: canSetBlood ? bloodGroup : null,
+        bloodGroupSource: canSetBlood ? 'self_reported' : null,
+        bmdcRegistrationNumber: isStudent ? null : cleanBmdc,
       );
       state = state.copyWith(userProfile: updated);
     } catch (e) {
       debugPrint('[Auth] Error updating profile details: $e');
       rethrow;
     }
+  }
+
+  /// Student submits a photo of their BAUST ID card for admin verification.
+  /// [imageBase64] must be a compressed JPEG/PNG (kept well under Firestore's 1 MB doc limit).
+  Future<void> submitStudentIdVerification({
+    required String imageBase64,
+    required String mimeType,
+    Map<String, dynamic>? aiCheck,
+  }) async {
+    final p = state.userProfile;
+    if (p == null) return;
+    if (imageBase64.length > 900000) {
+      throw Exception('ID photo is too large. Please retake it closer to the card.');
+    }
+    await firestore.collection('id_verifications').doc(p.uid).set({
+      'uid': p.uid,
+      'status': 'pending',
+      'imageBase64': imageBase64,
+      'mimeType': mimeType,
+      'displayName': p.displayName,
+      'studentRoll': p.studentRoll ?? '',
+      'department': p.department ?? '',
+      'email': p.email,
+      'aiCheck': ?aiCheck,
+      'submittedAt': FieldValue.serverTimestamp(),
+    });
+    await firestore.collection(FirestoreCollections.users).doc(p.uid).set({
+      'idVerificationStatus': 'pending',
+      'idSubmittedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    state = state.copyWith(userProfile: p.copyWith(idVerificationStatus: 'pending'));
+  }
+
+  /// Admin approves or rejects a student's ID card.
+  Future<void> reviewStudentIdVerification({
+    required String studentUid,
+    required bool approve,
+    String? note,
+  }) async {
+    final reviewer = state.userProfile;
+    final status = approve ? 'verified' : 'rejected';
+    final cleanNote = (note ?? '').trim();
+    final batch = firestore.batch();
+    batch.set(firestore.collection(FirestoreCollections.users).doc(studentUid), {
+      'idVerificationStatus': status,
+      'idReviewNote': cleanNote,
+      'idReviewedBy': reviewer?.email ?? '',
+      'idReviewedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    batch.set(firestore.collection('id_verifications').doc(studentUid), {
+      'status': status,
+      'reviewNote': cleanNote,
+      'reviewedBy': reviewer?.email ?? '',
+      'reviewedAt': FieldValue.serverTimestamp(),
+      // Drop the photo after approval; keep it on rejection so the student sees what failed.
+      if (approve) 'imageBase64': FieldValue.delete(),
+    }, SetOptions(merge: true));
+    await batch.commit();
   }
 
   // Reload current user state (for email verification check)
@@ -1226,84 +1363,6 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       debugPrint('Firestore update notice during onboarding completion: $e');
     }
-  }
-
-  /// Helper to test and demonstrate any RBAC role
-  void switchDemoRoleForTesting(String role) {
-    String name = 'BAUST Member';
-    String? designation;
-    String? accessLevel;
-    String? dept;
-    String email = '$role@baust.edu.bd';
-    String? phone;
-    String status = 'COMPLETED';
-
-    switch (role) {
-      case 'doctor':
-        name = 'Dr. Fowzia Jahan';
-        designation = 'Senior Medical Officer';
-        accessLevel = 'Doctor';
-        dept = 'BAUST Medical Center';
-        email = 'medicalcenter@baust.edu.bd';
-        phone = '01769-675576';
-        break;
-      case 'pharmacist':
-        name = 'Md. Mozaffor Hossain';
-        designation = 'Medical Assistant / Pharmacist';
-        accessLevel = 'Pharmacist';
-        dept = 'BAUST Medical Center';
-        email = '';
-        phone = '01712-645975';
-        break;
-      case 'staff':
-        name = 'Dr. Md Nakib Hayat Chowdhury';
-        designation = 'Head of Department (CSE) / Associate Professor';
-        accessLevel = 'Head of Department (Head)';
-        dept = 'Computer Science & Engineering (CSE)';
-        email = '';
-        phone = '01769675560';
-        break;
-      case 'nurse':
-        name = 'Lamia Aktar Limu';
-        designation = 'Staff Nurse';
-        accessLevel = 'Pharmacist';
-        dept = 'BAUST Medical Center';
-        email = 'limuakhtar9@gmail.com';
-        phone = '01749-898473';
-        break;
-      case 'superadmin':
-        name = 'MD. Sajol Hasan';
-        designation = 'Super Administrator';
-        accessLevel = 'SuperAdmin';
-        dept = 'Central Administration';
-        email = AuthConfig.superAdminEmail;
-        status = 'COMPLETED';
-        break;
-      case 'student':
-      default:
-        name = 'MD. Sajol Hassan';
-        dept = 'Computer Science & Engineering (CSE)';
-        email = '0802420205101137@baust.edu.bd';
-        status = 'COMPLETED';
-        break;
-    }
-
-    final profile = UserProfile(
-      uid: 'demo_${role}_uid',
-      email: email,
-      displayName: name,
-      role: role,
-      designation: designation,
-      accessLevel: accessLevel,
-      department: dept,
-      phone: phone,
-      studentRoll: role == 'student' ? '0802420205101137' : null,
-      residentialHall: 'Shaheed Dr. Zikrul Haque Hall (SDZHH)',
-      roomNumber: '402-B',
-      profileCompleted: true,
-      onboardingStatus: status,
-    );
-    state = AuthState(status: AuthStatus.authenticated, userProfile: profile);
   }
 
   // Sign Out

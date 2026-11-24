@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/baust_constants.dart';
 import '../controllers/auth_controller.dart';
 
@@ -76,10 +78,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: BaustColors.emergencyRed,
-          content: Text('Failed to resend verification link: $e'),
-        ),
+        SnackBar(backgroundColor: BaustColors.emergencyRed, content: Text('Failed to resend verification link: $e')),
       );
     } finally {
       if (mounted) setState(() => _isResending = false);
@@ -89,7 +88,8 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
-    final email = authState.userProfile?.email ??
+    final email =
+        authState.userProfile?.email ??
         ref.read(authControllerProvider.notifier).auth.currentUser?.email ??
         'your registered email';
 
@@ -125,30 +125,18 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                           color: BaustColors.primaryNavy.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.mark_email_unread_outlined,
-                          size: 48,
-                          color: BaustColors.primaryNavy,
-                        ),
+                        child: const Icon(Icons.mark_email_unread_outlined, size: 48, color: BaustColors.primaryNavy),
                       ),
                       const SizedBox(height: 20),
                       const Text(
                         'Email Verification Required',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: BaustColors.textDark,
-                        ),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: BaustColors.textDark),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 10),
                       Text(
                         'A confirmation link was sent to:\n$email\n\nPlease check your inbox and confirm your address before continuing to the university healthcare portal.',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: BaustColors.textMuted,
-                          height: 1.4,
-                        ),
+                        style: const TextStyle(fontSize: 13, color: BaustColors.textMuted, height: 1.4),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
@@ -181,16 +169,10 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: _isResending
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.send_rounded),
                         label: Text(
-                          _resendCooldown > 0
-                              ? 'RESEND EMAIL (${_resendCooldown}s)'
-                              : 'RESEND VERIFICATION EMAIL',
+                          _resendCooldown > 0 ? 'RESEND EMAIL (${_resendCooldown}s)' : 'RESEND VERIFICATION EMAIL',
                           style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
                         ),
                         onPressed: (_resendCooldown > 0 || _isResending) ? null : _handleResendEmail,
